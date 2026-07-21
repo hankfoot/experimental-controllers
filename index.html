@@ -90,9 +90,7 @@
   </div>
 
   <div id="unsupported-banner" class="note wrap" hidden>
-    Web Bluetooth needs <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) —
-    Safari and Firefox can't connect. No micro:bit handy? Open the
-    <a href="#" id="banner-demo-link">Live</a> panel to send test input.
+    This project requires <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) to support Web Bluetooth.
   </div>
 
   <main class="wrap">
@@ -168,7 +166,7 @@
             <div class="step-body">
               <h3>Set up MakeCode</h3>
               <p>
-                Open the <a href="https://makecode.microbit.org/_Vx7DwC51d7f3" target="_blank" rel="noopener">
+                Open the <a href="https://makecode.microbit.org/_JguX2x325Wva" target="_blank" rel="noopener">
                 blank starter project</a> in MakeCode, then click <strong>Edit Code</strong> in the top right. This file already has Bluetooth settings pre-configured, so make sure to work from here. You should see an interface like the one below.
               </p>
               <figure class="shot">
@@ -180,11 +178,9 @@
           <li class="step">
             <span class="step-num">3</span>
             <div class="step-body">
-              <h3>Paste in the starter code</h3>
+              <h3>Copy the starter code</h3>
               <p>
-                Switch to the <strong>JavaScript</strong> tab at the top of the editor and paste this in.
-                It scrolls your micro:bit's Bluetooth name across the LEDs on a loop until the browser
-                connects, then shows a checkmark.
+                Switch to the <strong>JavaScript</strong> tab at the top of the page and paste this code into the editor:
               </p>
               <div class="code-block">
                 <button class="code-copy" type="button">Copy</button>
@@ -212,10 +208,12 @@ basic.forever(function () {
             <div class="step-body">
               <h3>Flash it to your micro:bit</h3>
               <p>
-                Plug the micro:bit in over USB, click <strong>Download</strong> in MakeCode, and drag
-                the downloaded <code>.hex</code> onto the <strong>MICROBIT</strong> drive (or use
-                MakeCode's <em>Connect device</em> to flash directly). The yellow light blinks while it
-                copies, then stops when it's done.
+                Your micro:bit must be plugged into your computer to receive new code. Plug the micro:bit in over USB, then click <strong>Download</strong> in the bottom right.
+              </p>
+              <br/>
+              <p>
+                If this is your first time downloading, follow the pop-up instructions to pair your board to your browser. A red light on the back of the board will blink while it
+                copies code, then stops when it's done.
               </p>
               <figure class="shot">
                 <div class="shot-ph" data-file="assets/setup-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
