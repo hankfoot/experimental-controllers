@@ -15,6 +15,7 @@ initBuilder({
   grid: document.getElementById('builder-grid'),
   codeEl: document.getElementById('builder-code'),
   stepsEl: document.getElementById('builder-steps'),
+  warnEl: document.getElementById('builder-warning'),
 });
 
 // --- Consumers -------------------------------------------------------------

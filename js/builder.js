@@ -165,18 +165,18 @@ export const SECTIONS = [
       gesture('tiltright', 'Tilt right', 'TiltRight', '👉',
         'Fires when tipped right.',
         'No wiring. The mirror of tilt-left — pair the two to nudge something left/right.'),
-      gesture('logoup', 'Logo up', 'LogoUp', '⬆️',
-        'Logo end swings upward.',
-        'No wiring. Fires when the board is turned so the gold-logo end points up. Good for “raise it”.'),
-      gesture('logodown', 'Logo down', 'LogoDown', '⬇️',
-        'Logo end swings downward.',
-        'No wiring. Fires when the logo end points down — flip your object over to trigger it.'),
+      gesture('logoup', 'Logo up', 'LogoUp', '🙂',
+        'Standing upright, logo at the top.',
+        'No wiring. Board held UPRIGHT (screen facing you), gold-logo edge at the top — the normal way to read it. Fires when it swings into that position.'),
+      gesture('logodown', 'Logo down', 'LogoDown', '🙃',
+        'Standing upright but flipped, logo at the bottom.',
+        'No wiring. Still UPRIGHT and facing you, but turned 180° so the logo edge is now at the bottom. Fires when your object is flipped upside down.'),
       gesture('faceup', 'Face up', 'ScreenUp', '🔆',
-        'LEDs turned to face up.',
-        'No wiring. Fires when the LED side ends up facing the ceiling — lay your object flat, screen-up.'),
+        'Lying flat, screen toward the ceiling.',
+        'No wiring. Board laid FLAT like on a table, LED screen pointing up at the ceiling. Fires when it settles face-up.'),
       gesture('facedown', 'Face down', 'ScreenDown', '🌙',
-        'LEDs turned to face down.',
-        'No wiring. Fires when the LED side faces the floor — slam it down flat, or hide it.'),
+        'Lying flat, screen toward the floor.',
+        'No wiring. Board laid FLAT the other way, LED screen pointing down at the floor. Fires when it settles face-down.'),
       gesture('freefall', 'Free fall', 'FreeFall', '🪂',
         'Fires while dropping.',
         'No wiring. Fires the instant the board is in the air — toss it up (and catch it!) or drop it onto a cushion.'),
@@ -231,6 +231,23 @@ function variantOf(input, pinModes) {
   return input.modes ? input.modes[pinModes[input.id]] : input;
 }
 
+/**
+ * How many UART lines the forever loop writes per 100 ms tick — the real steady
+ * Bluetooth load. Only loop inputs count; gestures fire on events, not every
+ * tick. A loop input writes one line per channel each tick (so tilt = 2:
+ * pitch + roll; a binary if/else still writes exactly one). The visualizer/game
+ * feel laggy once the micro:bit's BLE UART can't keep up, so we warn past a cap.
+ */
+export function streamingLines(selected, pinModes) {
+  let n = 0;
+  for (const input of INPUTS) {
+    if (!selected.has(input.id)) continue;
+    const v = variantOf(input, pinModes);
+    if (v.loop) n += v.channels.length;
+  }
+  return n;
+}
+
 export function generateCode(selected, pinModes) {
   const handlers = [];
   const loop = [];
@@ -258,7 +275,12 @@ export function generateCode(selected, pinModes) {
 
 // --- UI ---------------------------------------------------------------------
 
-export function initBuilder({ grid, codeEl, stepsEl }) {
+// Soft caps on streaming lines/tick before the BLE UART starts to lag. These are
+// conservative estimates — validate against real hardware and tune. See CLAUDE.md.
+const STREAM_BUSY = 5; // gentle heads-up
+const STREAM_HEAVY = 8; // stronger warning
+
+export function initBuilder({ grid, codeEl, stepsEl, warnEl }) {
   const selected = new Set();
   const pinModes = { p0: 'touch', p1: 'touch', p2: 'touch' };
 
@@ -307,8 +329,29 @@ export function initBuilder({ grid, codeEl, stepsEl }) {
     }
   }
 
+  function renderWarning() {
+    if (!warnEl) return;
+    const n = streamingLines(selected, pinModes);
+    if (n < STREAM_BUSY) {
+      warnEl.hidden = true;
+      return;
+    }
+    warnEl.hidden = false;
+    warnEl.dataset.level = n >= STREAM_HEAVY ? 'heavy' : 'busy';
+    warnEl.innerHTML = n >= STREAM_HEAVY
+      ? `⚡ <strong>${n} readings are streaming</strong> ten times a second. That's a lot for the
+         micro:bit's Bluetooth — expect the game to feel laggy or jerky. Uncheck any inputs you're
+         not actually using. Tip: <strong>gestures are free</strong> (shake, tilt-left, free fall…
+         only send when they happen), so lean on those instead of held buttons and live sensors
+         where you can.`
+      : `⚡ <strong>${n} readings are streaming</strong> ten times a second. Still fine, but
+         stacking on many more may start to lag over Bluetooth. <strong>Gestures are free</strong>
+         — they only send the moment they fire, so they never add to this.`;
+  }
+
   function renderOutput() {
     codeEl.textContent = generateCode(selected, pinModes);
+    renderWarning();
 
     const notes = [];
     for (const input of INPUTS) {
