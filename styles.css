@@ -9,15 +9,17 @@
   --ink-faint: #a2a7b0;
   --line:      #e8e9ed;
 
-  /* Super Famicom face-button colors, one assigned per screen: Home=blue, Set up=green,
-     Starters=yellow, Game=red. */
+  /* Super Famicom face-button colors, one assigned per screen: Set up=red, Starters=yellow,
+     Game=green. Home + all default buttons/accents use neutral gray. Blue lives only in the
+     logo diamond (the SFC 4-color mark), not in the functional UI. */
   --red:    #e5484d;  --red-soft:    #fdecec;  --red-ink:    #d23a3f;
   --yellow: #f4b400;  --yellow-soft: #fff6df;  --yellow-ink: #a5760f;
   --green:  #34b24a;  --green-soft:  #e7f6ea;  --green-ink:  #2c9740;
-  --blue:   #2f6bff;  --blue-soft:   #eaf1ff;  --blue-ink:   #2a60e6;
+  --blue:   #2f6bff;  --blue-soft:   #eaf1ff;  --blue-ink:   #2a60e6; /* logo diamond only */
+  --gray:   #4b4b52;  --gray-soft:   #eeedf0;  --gray-ink:   #46464d;
 
-  --accent: var(--blue);
-  --accent-soft: var(--blue-soft);
+  --accent: var(--gray);
+  --accent-soft: var(--gray-soft);
   --accent-ink: #ffffff;
 
   --radius: 12px;
@@ -98,7 +100,7 @@ code {
 .sig-dot.flash { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
 .sig-state[data-on="true"] { background: var(--green); }
 .sig-spark { width: 64px; height: 22px; display: block; }
-.sig-num { font-family: var(--mono); font-size: .74rem; min-width: 32px; text-align: right; color: var(--blue-ink); }
+.sig-num { font-family: var(--mono); font-size: .74rem; min-width: 32px; text-align: right; color: var(--ink-soft); }
 
 /* ---------- Visualizer popover ---------- */
 .viz-pop {
@@ -168,10 +170,10 @@ code {
 .tab:hover { background: var(--bg-soft); color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* each screen gets its own accent: Home=blue (default above), Set up=green, Starters=yellow, Game=red */
-#tab-setup[aria-selected="true"]    { background: var(--green-soft);  color: var(--green-ink); }
+/* each screen gets its own accent: Home=gray (default above), Set up=red, Starters=yellow, Game=green */
+#tab-setup[aria-selected="true"]    { background: var(--red-soft);    color: var(--red-ink); }
 #tab-starters[aria-selected="true"] { background: var(--yellow-soft); color: var(--yellow-ink); }
-#tab-game[aria-selected="true"]     { background: var(--red-soft);    color: var(--red-ink); }
+#tab-game[aria-selected="true"]     { background: var(--green-soft);  color: var(--green-ink); }
 
 .panel[hidden] { display: none; }
 .panel:not([hidden]) { animation: fade .28s ease both; }
@@ -239,7 +241,7 @@ em { color: var(--accent); font-style: italic; }
   flex: none; width: 30px; height: 30px; border-radius: 50%;
   font-weight: 700; font-size: .9rem; display: grid; place-items: center;
   margin-top: 1px; color: #fff;
-  background: var(--green); /* Set up's page color */
+  background: var(--red); /* Set up's page color */
 }
 .step-body { padding-bottom: 24px; }
 .step:not(:last-child) .step-body { border-bottom: 1px solid var(--line); margin-bottom: 24px; }
@@ -353,7 +355,7 @@ kbd {
 }
 .toggle[data-on="true"] { color: var(--green-ink); background: var(--green-soft); border-color: var(--green); }
 
-.readnum { font-family: var(--mono); font-weight: 600; color: var(--blue-ink); }
+.readnum { font-family: var(--mono); font-weight: 600; color: var(--ink); }
 .plot { border-radius: 8px; overflow: hidden; background: var(--bg-soft); border: 1px solid var(--line); }
 #value-canvas { width: 100%; height: 120px; display: block; }
 
@@ -382,8 +384,8 @@ kbd {
 .screen-badge {
   position: absolute; left: 22px; bottom: 22px;
   font-size: .74rem; font-weight: 600;
-  background: var(--red-soft); color: var(--red-ink);
-  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); padding: 4px 10px; border-radius: 999px;
+  background: var(--green-soft); color: var(--green-ink);
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); padding: 4px 10px; border-radius: 999px;
 }
 
 /* ---------- Footer ---------- */
