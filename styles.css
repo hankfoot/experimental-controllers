@@ -121,7 +121,6 @@ code {
 .icon-btn:hover { background: var(--bg-soft); color: var(--ink); }
 .viz-pop .live-card { padding: 14px; }
 .viz-pop .pop { width: 48px; height: 48px; }
-.viz-pop .demo { margin-bottom: 12px; }
 
 /* ---------- Buttons ---------- */
 .btn {
@@ -142,12 +141,6 @@ code {
 .btn-soft:hover { background: var(--bg-soft); }
 .btn-soft[data-on="true"] { background: var(--green-soft); border-color: var(--green); color: var(--green-ink); }
 .btn-lg { padding: 12px 22px; font-size: 1rem; border-radius: 11px; }
-
-.linkish {
-  background: none; border: none; padding: 0; cursor: pointer;
-  font: inherit; font-weight: 600; color: var(--accent);
-  text-decoration: underline; text-underline-offset: 2px;
-}
 
 /* ---------- Note ---------- */
 .note {
@@ -312,20 +305,21 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 }
 .card p { margin: 0; font-size: .88rem; color: var(--ink-soft); }
 
-/* ---------- Demo strip ---------- */
-.demo {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+/* ---------- Send test input ---------- */
+.send { margin-top: 16px; }
+.send-label {
+  display: block; margin-bottom: 8px;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-soft);
+}
+.send-sub { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-faint); }
+.send-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: var(--bg-soft); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 12px 15px;
+  border-radius: var(--radius); padding: 12px 14px;
 }
 .demo-value { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--ink-soft); }
 .demo-value input[type=range] { accent-color: var(--accent); }
-.demo-hint { font-size: .78rem; color: var(--ink-faint); margin-left: auto; }
-kbd {
-  font-family: var(--mono); font-size: .74rem; color: var(--ink);
-  background: var(--bg); border: 1px solid var(--line);
-  border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px;
-}
 
 /* ---------- Live view (inside popover) ---------- */
 .live { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
@@ -403,7 +397,6 @@ kbd {
 }
 @media (max-width: 560px) {
   .conn-text { display: none; }
-  .demo-hint { margin-left: 0; width: 100%; }
   .viz-pop { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; }
 }
 

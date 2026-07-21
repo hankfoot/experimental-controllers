@@ -17,7 +17,7 @@ renderSensors(document.getElementById('sensor-grid'));
 // --- Consumers -------------------------------------------------------------
 initVisualizer();
 initGame();
-const demo = initDemo();
+initDemo();
 
 // --- Browser support banner ------------------------------------------------
 if (!isSupported()) {

@@ -56,18 +56,7 @@
   <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
     <div class="viz-pop-head">
       <strong>Live input</strong>
-      <button id="demo-toggle" class="linkish">Demo mode</button>
       <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
-    </div>
-
-    <div id="demo-panel" class="demo" hidden>
-      <button id="demo-trigger" class="btn btn-soft">Send <code>trigger</code></button>
-      <button id="demo-state" class="btn btn-soft" data-on="false">Toggle <code>state</code></button>
-      <label class="demo-value">
-        <code>value</code>
-        <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
-      </label>
-      <span class="demo-hint">Press <kbd>Space</kbd> for a trigger</span>
     </div>
 
     <div class="live">
@@ -86,12 +75,24 @@
         <div class="plot"><canvas id="value-canvas" width="600" height="130"></canvas></div>
       </div>
     </div>
+
+    <div class="send">
+      <span class="send-label">Send test input <span class="send-sub">— no micro:bit needed</span></span>
+      <div class="send-controls">
+        <button id="demo-trigger" class="btn btn-soft">Send <code>trigger</code></button>
+        <button id="demo-state" class="btn btn-soft" data-on="false">Toggle <code>state</code></button>
+        <label class="demo-value">
+          <code>value</code>
+          <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
+        </label>
+      </div>
+    </div>
   </div>
 
   <div id="unsupported-banner" class="note wrap" hidden>
     Web Bluetooth needs <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) —
-    Safari and Firefox can't connect. No micro:bit handy? Open
-    <a href="#" id="banner-demo-link">Live → Demo mode</a>.
+    Safari and Firefox can't connect. No micro:bit handy? Open the
+    <a href="#" id="banner-demo-link">Live</a> panel to send test input.
   </div>
 
   <main class="wrap">
