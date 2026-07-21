@@ -8,8 +8,10 @@ placeholder box on the page for the real image:
 | `setup-microbit.png` | A micro:bit v2 board |
 | `setup-project.png` | The starter project open in MakeCode (micro:bit simulator visible) |
 | `setup-pair.png` | The browser's pairing pop-up during the first download |
-| `setup-battery.png` | A micro:bit running off an attached battery pack (optional step) |
-| `setup-name.png` | The five-letter name scrolling across the micro:bit LEDs |
+| `setup-battery.jpg` | A micro:bit running off an attached battery pack (optional step) |
+| `setup-name.mp4` | Video: the five-letter name scrolling across the micro:bit LEDs |
 | `setup-chooser.png` | The browser's Bluetooth chooser listing "BBC micro:bit […]" |
 
-PNG or JPG both fine. Landscape crops look best (they render up to 620px wide).
+Images (PNG/JPG) render up to 620px wide; landscape crops look best. Drop raw
+phone photos/videos here and they get resized + stripped of EXIF/GPS on commit;
+videos are transcoded to a muted, web-optimized MP4 (`autoplay loop muted`).

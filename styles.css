@@ -270,7 +270,7 @@ em { color: var(--accent); font-style: italic; }
   content: "add " attr(data-file);
   font-family: var(--mono); font-size: .7rem; color: var(--ink-faint);
 }
-.shot img { display: block; max-width: 620px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
+.shot img, .shot video { display: block; max-width: 620px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
 
 /* Copy-paste code block */
 .code-block { position: relative; margin-top: 6px; max-width: 560px; }
