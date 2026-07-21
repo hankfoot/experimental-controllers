@@ -105,7 +105,7 @@ code {
 
 /* ---------- Hero ---------- */
 main { padding-block: 44px 64px; }
-.hero { margin-bottom: 56px; }
+.hero { margin-bottom: 30px; }
 .eyebrow {
   font-weight: 600; font-size: .78rem; letter-spacing: .04em;
   color: var(--ink-faint); margin: 0 0 12px; text-transform: uppercase;
@@ -120,6 +120,28 @@ h1 {
   margin-top: 22px; font-family: var(--mono); font-size: .82rem;
   color: var(--ink-faint); letter-spacing: .01em;
 }
+
+/* ---------- Tabs ---------- */
+.tabs {
+  display: flex; gap: 26px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 34px;
+}
+.tab {
+  font: inherit; font-weight: 600; font-size: .95rem;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-soft); padding: 10px 2px; margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 5px; }
+
+.panel[hidden] { display: none; }
+.panel:not([hidden]) { animation: fade .28s ease both; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+.panel > .block:first-child { margin-top: 0; }
 
 /* ---------- Blocks ---------- */
 .block { margin-top: 52px; }
@@ -277,4 +299,9 @@ kbd {
   .topbar-inner { align-items: flex-start; }
   .conn { width: 100%; }
   .demo-hint { margin-left: 0; width: 100%; }
+  .tabs { gap: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel:not([hidden]) { animation: none; }
 }

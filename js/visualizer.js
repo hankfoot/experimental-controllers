@@ -35,12 +35,15 @@ export function initVisualizer() {
   });
 
   // Match the canvas backing store to its displayed size for crisp lines.
+  // Returns false when the canvas has no size yet (e.g. its tab is hidden).
   function fitCanvas() {
     const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return false;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(rect.width * dpr));
     canvas.height = Math.max(1, Math.round(rect.height * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return true;
   }
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
@@ -59,12 +62,19 @@ export function initVisualizer() {
       light.classList.remove('flash');
     }
 
+    // Re-fit if the displayed size changed (e.g. the Play tab just became visible).
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.clientWidth && canvas.width !== Math.round(canvas.clientWidth * dpr)) {
+      fitCanvas();
+    }
+
     // Push the current value into the rolling history and redraw the plot.
     history.push(current);
     history.shift();
 
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
+    if (!w) { requestAnimationFrame(frame); return; } // tab hidden — skip drawing
     const c = accentColor();
     ctx.clearRect(0, 0, w, h);
 

@@ -6,6 +6,10 @@ import { initVisualizer } from './visualizer.js';
 import { initGame } from './game.js';
 import { initDemo } from './demo.js';
 import { renderSensors } from './sensors.js';
+import { initTabs } from './tabs.js';
+
+// --- Tabs ------------------------------------------------------------------
+initTabs();
 
 // --- Sensor grid -----------------------------------------------------------
 renderSensors(document.getElementById('sensor-grid'));
