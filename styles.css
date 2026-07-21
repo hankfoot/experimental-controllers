@@ -74,7 +74,10 @@ code {
 .mark { width: 24px; height: 24px; display: block; flex: none; }
 .mark svg { width: 24px; height: 24px; display: block; }
 
-.topbar-right { display: flex; align-items: center; gap: 12px; }
+/* Status monitoring keeps the top row (right side); the nav drops to its own
+   full-width row below. This is fixed at every width so connecting/disconnecting
+   (which widens the status block) never reflows the header. */
+.topbar-right { display: flex; align-items: center; gap: 12px; order: 2; margin-left: auto; }
 .conn { display: flex; align-items: center; gap: 9px; }
 .dot {
   width: 9px; height: 9px; border-radius: 50%; flex: none;
@@ -152,7 +155,7 @@ code {
 .note a { color: var(--yellow-ink); }
 
 /* ---------- Menu bar ---------- */
-.menu { display: flex; gap: 4px; flex-wrap: wrap; }
+.menu { display: flex; gap: 4px; flex-wrap: wrap; order: 3; width: 100%; margin-top: 4px; }
 .tab {
   font: inherit; font-weight: 600; font-size: .9rem;
   background: none; border: none; cursor: pointer;
@@ -428,8 +431,6 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 }
 @media (max-width: 720px) {
   .home-cards { grid-template-columns: 1fr; }
-  .menu { order: 3; width: 100%; }
-  .topbar-right { order: 2; }
 }
 @media (max-width: 560px) {
   .conn-text { display: none; }
