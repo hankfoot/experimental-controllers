@@ -7,17 +7,14 @@
   <meta name="description" content="Turn everyday objects into game controllers with a micro:bit and Web Bluetooth. Companion site for the Fidget Camp 2026 unconventional-controllers workshop." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,600&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='9' cy='11' r='6' fill='%23f2795a'/><circle cx='22' cy='11' r='6' fill='%237cc5e8'/><circle cx='15' cy='22' r='6' fill='%23ffd24c'/></svg>" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='6' y='6' width='20' height='20' rx='6' fill='%232563eb'/></svg>" />
 </head>
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="wordmark" href="#top">
-        <span class="wordmark-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-        Experimental&nbsp;Controllers
-      </a>
+      <a class="wordmark" href="#top"><span class="mark" aria-hidden="true"></span> Experimental Controllers</a>
       <div class="conn" role="status">
         <span id="status-dot" class="dot" data-state="disconnected"></span>
         <span id="status-text" class="conn-text">Not connected</span>
@@ -27,7 +24,6 @@
   </header>
 
   <div id="unsupported-banner" class="note wrap" hidden>
-    <span class="note-emoji" aria-hidden="true">🌿</span>
     Web Bluetooth needs <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) —
     Safari and Firefox can't connect. No micro:bit handy? Try
     <a href="#" id="banner-demo-link">Demo mode</a>.
@@ -36,75 +32,55 @@
   <main class="wrap" id="top">
 
     <section class="hero">
-      <p class="eyebrow">Fidget Camp 2026 · workshop</p>
-      <h1 class="hero-title">Turn everyday things into&nbsp;game&nbsp;controllers.</h1>
+      <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
+      <h1>Turn everyday things into game controllers.</h1>
       <p class="hero-sub">
-        Wire a real-world object to a <strong>micro:bit</strong>. Its sensors read how you touch,
-        tilt, or shake it and send that over <strong>Bluetooth</strong> to this page — where it
-        plays a little game. Flash a starter, connect, and go.
+        Wire a real-world object to a micro:bit. Its sensors read how you touch, tilt, or shake it
+        and send that over Bluetooth to this page, where it plays a little game. Flash a starter,
+        connect, and go.
       </p>
-      <div class="flow" aria-hidden="true">
-        <span class="pill">🧸 object</span>
-        <span class="arr">→</span>
-        <span class="pill">micro:bit</span>
-        <span class="arr">→</span>
-        <span class="pill">bluetooth</span>
-        <span class="arr">→</span>
-        <span class="pill pill-hot">game 🎈</span>
-      </div>
+      <p class="flow">object &rarr; micro:bit &rarr; bluetooth &rarr; game</p>
     </section>
 
     <!-- 1 — sensor starters -->
     <section class="block" id="sensors">
-      <div class="block-head">
-        <span class="num num-coral">1</span>
-        <h2>Flash a sensor starter</h2>
-      </div>
+      <div class="block-head"><span class="num">1</span><h2>Flash a sensor starter</h2></div>
       <p class="lead">
-        Each starter reads one kind of micro:bit input and sends it with the little protocol below.
-        Open one in MakeCode, tweak it for your object, and flash it to a micro:bit&nbsp;v2.
+        Each starter reads one kind of micro:bit input and sends it with the protocol below. Open
+        one in MakeCode, tweak it for your object, and flash it to a micro:bit&nbsp;v2.
       </p>
       <div class="tiles" id="sensor-grid"><!-- populated by js/sensors.js --></div>
     </section>
 
     <!-- protocol -->
     <section class="block" id="protocol">
-      <div class="block-head">
-        <span class="num num-blue">✦</span>
-        <h2>The little protocol</h2>
-      </div>
+      <div class="block-head"><span class="num">2</span><h2>The protocol</h2></div>
       <p class="lead">
-        Just three kinds of message, one per line. The page only knows these three — so the same
-        visualizer and game work with <em>any</em> sensor you make.
+        Three kinds of message, one per line. The page only knows these three, so the same
+        visualizer and game work with any sensor you make.
       </p>
-      <div class="protos">
-        <div class="proto proto-coral">
-          <span class="proto-tag">once</span>
-          <code class="proto-msg">trigger</code>
+      <div class="cards">
+        <div class="card">
+          <code class="msg">trigger</code>
           <p>A one-off event — a shake, a clap, a click. This is what makes the game jump.</p>
         </div>
-        <div class="proto proto-blue">
-          <span class="proto-tag">on / off</span>
-          <code class="proto-msg">state:true</code>
+        <div class="card">
+          <code class="msg">state:true</code>
           <p>A held switch — a button pressed down, or an object being touched.</p>
         </div>
-        <div class="proto proto-green">
-          <span class="proto-tag">smooth</span>
-          <code class="proto-msg">value:0.42</code>
-          <p>A sliding number from <code>0</code> to <code>1</code> — tilt, brightness, loudness.</p>
+        <div class="card">
+          <code class="msg">value:0.42</code>
+          <p>A number from <code>0</code> to <code>1</code> — tilt, brightness, loudness.</p>
         </div>
       </div>
     </section>
 
-    <!-- 2 — live input -->
+    <!-- 3 — live input -->
     <section class="block" id="visualizer">
-      <div class="block-head">
-        <span class="num num-yellow">2</span>
-        <h2>Watch it come in</h2>
-      </div>
+      <div class="block-head"><span class="num">3</span><h2>Watch it come in</h2></div>
       <p class="lead">
         Connect a micro:bit up top, or turn on
-        <button id="demo-toggle" class="linkish">Demo mode</button> to play without hardware.
+        <button id="demo-toggle" class="linkish">Demo mode</button> to try it without hardware.
       </p>
 
       <div id="demo-panel" class="demo" hidden>
@@ -115,41 +91,38 @@
           <code>value</code>
           <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
         </label>
-        <span class="demo-hint">Tip: press <kbd>Space</kbd> for a trigger</span>
+        <span class="demo-hint">Press <kbd>Space</kbd> for a trigger</span>
       </div>
 
       <div class="live">
-        <div class="live-card">
+        <div class="card live-card">
           <span class="live-label"><code>trigger</code></span>
           <div id="trigger-light" class="pop"></div>
           <span class="live-meta">Fired <strong id="trigger-count">0</strong></span>
         </div>
-        <div class="live-card">
+        <div class="card live-card">
           <span class="live-label"><code>state</code></span>
           <div id="state-pill" class="toggle" data-on="false">false</div>
           <span class="live-meta">Held on / off</span>
         </div>
-        <div class="live-card live-wide">
+        <div class="card live-card live-wide">
           <span class="live-label"><code>value</code><span id="value-readout" class="readnum">0.00</span></span>
           <div class="plot"><canvas id="value-canvas" width="600" height="150"></canvas></div>
         </div>
       </div>
     </section>
 
-    <!-- 3 — the game -->
+    <!-- 4 — the game -->
     <section class="block" id="game">
-      <div class="block-head">
-        <span class="num num-green">3</span>
-        <h2>Play</h2>
-      </div>
+      <div class="block-head"><span class="num">4</span><h2>Play</h2></div>
       <p class="lead">
-        The game reads the exact same messages. It's a placeholder for now — my collaborator is
-        adding <strong>Flappy Bird</strong> here. The little bird already flaps on
-        <code>trigger</code>, so you can check your controller works end to end.
+        The game reads the same messages. It's a placeholder for now — my collaborator is adding
+        Flappy Bird here. The bird already flaps on <code>trigger</code>, so you can check your
+        controller works end to end.
       </p>
       <div class="screen">
         <canvas id="game-canvas" width="480" height="320"></canvas>
-        <span class="screen-badge">Placeholder · Flappy Bird soon 🐤</span>
+        <span class="screen-badge">Placeholder · Flappy Bird soon</span>
       </div>
     </section>
 
@@ -157,8 +130,7 @@
 
   <footer class="foot">
     <div class="wrap foot-inner">
-      <span class="wordmark-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-      <span>Made with care for Fidget Camp 2026</span>
+      <span>Fidget Camp 2026 · Experimental Controllers</span>
       <a href="https://github.com/hankfoot/experimental-controllers">GitHub</a>
     </div>
   </footer>

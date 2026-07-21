@@ -60,7 +60,7 @@ export function renderSensors(container) {
   for (const s of SENSORS) {
     const ready = !!s.url;
     const el = document.createElement(ready ? 'a' : 'div');
-    el.className = `tile tile--${s.tone}`;
+    el.className = 'tile';
     el.dataset.ready = String(ready);
     if (ready) {
       el.href = s.url;
