@@ -200,13 +200,6 @@ h1 {
 
 .home-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 30px 0 0; }
 
-.home-meta {
-  display: flex; justify-content: center; gap: 18px 40px; flex-wrap: wrap;
-  text-align: center; margin: 44px auto 0; max-width: 720px;
-}
-.home-meta dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-faint); margin-bottom: 4px; }
-.home-meta dd { margin: 0; font-weight: 600; }
-
 .home-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 48px; }
 .home-card {
   text-align: left; font: inherit; color: inherit; cursor: pointer;
