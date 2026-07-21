@@ -18,7 +18,18 @@ export const CHANNELS = {
   pitch:   { label: 'Pitch',       emoji: '📐', min: -90,  max: 90 },
   roll:    { label: 'Roll',        emoji: '📐', min: -180, max: 180 },
   heading: { label: 'Compass',     emoji: '🧭', max: 360 },
-  shake:   { label: 'Shake',       emoji: '🫨', kind: 'event' },
+  // One-off accelerometer gestures — each fires a single "1".
+  shake:     { label: 'Shake',      emoji: '🫨', kind: 'event' },
+  tiltleft:  { label: 'Tilt left',  emoji: '👈', kind: 'event' },
+  tiltright: { label: 'Tilt right', emoji: '👉', kind: 'event' },
+  logoup:    { label: 'Logo up',    emoji: '⬆️', kind: 'event' },
+  logodown:  { label: 'Logo down',  emoji: '⬇️', kind: 'event' },
+  faceup:    { label: 'Face up',    emoji: '🔆', kind: 'event' },
+  facedown:  { label: 'Face down',  emoji: '🌙', kind: 'event' },
+  freefall:  { label: 'Free fall',  emoji: '🪂', kind: 'event' },
+  g3:        { label: 'Small bump', emoji: '💥', kind: 'event' },
+  g6:        { label: 'Hard hit',   emoji: '💥', kind: 'event' },
+  g8:        { label: 'Big slam',   emoji: '💥', kind: 'event' },
 };
 
 /** Metadata for a channel name, with a generic fallback for unknown channels. */

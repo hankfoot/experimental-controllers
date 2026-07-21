@@ -85,83 +85,144 @@ function pinInput(n) {
   };
 }
 
-export const INPUTS = [
-  {
-    id: 'btna', emoji: '🔘', name: 'Button A',
-    desc: 'The A button — pressed or not.',
-    channels: ['btna'],
-    loop: binary('btna', 'input.buttonIsPressed(Button.A)'),
-    build: 'No wiring. To press it with an object, tape something onto the button or build a little lever that pushes it.',
-  },
-  {
-    id: 'btnb', emoji: '🔘', name: 'Button B',
-    desc: 'The B button — pressed or not.',
-    channels: ['btnb'],
-    loop: binary('btnb', 'input.buttonIsPressed(Button.B)'),
-    build: 'No wiring. Same tricks as Button A — two buttons means two separate channels.',
-  },
-  {
-    id: 'logo', emoji: '⭐', name: 'Logo touch',
-    desc: 'The gold logo is a touch sensor.',
-    channels: ['logo'],
-    loop: binary('logo', 'input.logoIsPressed()'),
-    build: 'No wiring. Touch the gold logo on the front — it even works through a thin strip of foil taped over it.',
-  },
-  {
-    id: 'tilt', emoji: '📐', name: 'Tilt',
-    desc: 'Pitch & roll angles from the accelerometer.',
-    channels: ['pitch', 'roll'],
-    loop: [
-      ...number('pitch', 'input.rotation(Rotation.Pitch)'),
-      ...number('roll', 'input.rotation(Rotation.Roll)'),
-    ],
-    build: 'No wiring — strap the whole micro:bit (plus battery pack) to your object and tilt it. Pitch and roll arrive in degrees.',
-  },
-  {
-    id: 'shake', emoji: '🫨', name: 'Shake',
-    desc: 'Fires once each time the board is shaken.',
-    channels: ['shake'],
+/** A one-off accelerometer gesture: fires "<id>:1" via an onGesture handler. */
+function gesture(id, name, gestureName, emoji, desc, build) {
+  return {
+    id, emoji, name, desc,
+    channels: [id],
     handlers: [
-      'input.onGesture(Gesture.Shake, function () {',
+      `input.onGesture(Gesture.${gestureName}, function () {`,
       '    if (connected) {',
-      '        bluetooth.uartWriteLine("shake:1")',
+      `        bluetooth.uartWriteLine("${id}:1")`,
       '    }',
       '})',
     ],
-    build: 'No wiring — attach the board to anything shakeable. A maraca, a stuffed animal, a pool noodle.',
+    build,
+  };
+}
+
+// Inputs are grouped into three sections shown as separate labelled grids.
+export const SECTIONS = [
+  {
+    id: 'touch',
+    title: 'Touch & press',
+    desc: 'Buttons and things you make conductive. Each sends 1 while active, 0 otherwise.',
+    inputs: [
+      {
+        id: 'btna', emoji: '🔘', name: 'Button A',
+        desc: 'The A button — pressed or not.',
+        channels: ['btna'],
+        loop: binary('btna', 'input.buttonIsPressed(Button.A)'),
+        build: 'No wiring. To press it with an object, tape something onto the button or build a little lever that pushes it.',
+      },
+      {
+        id: 'btnb', emoji: '🔘', name: 'Button B',
+        desc: 'The B button — pressed or not.',
+        channels: ['btnb'],
+        loop: binary('btnb', 'input.buttonIsPressed(Button.B)'),
+        build: 'No wiring. Same tricks as Button A — two buttons means two separate channels.',
+      },
+      {
+        id: 'logo', emoji: '⭐', name: 'Logo touch',
+        desc: 'The gold logo is a touch sensor.',
+        channels: ['logo'],
+        loop: binary('logo', 'input.logoIsPressed()'),
+        build: 'No wiring. Touch the gold logo on the front — it even works through a thin strip of foil taped over it.',
+      },
+      pinInput(0),
+      pinInput(1),
+      pinInput(2),
+    ],
   },
   {
-    id: 'light', emoji: '💡', name: 'Light',
-    desc: 'The LED grid doubles as a light sensor.',
-    channels: ['light'],
-    loop: number('light', 'input.lightLevel()'),
-    build: 'No wiring. Cover and uncover the LED grid with your hand, or shine a flashlight on it. Sends 0–255.',
+    id: 'motion',
+    title: 'Motion & direction',
+    desc: 'How the board is tilted, pointed, moved, or flicked. Tilt and compass stream a live number; the rest fire once when they happen.',
+    inputs: [
+      {
+        id: 'tilt', emoji: '📐', name: 'Tilt',
+        desc: 'Pitch & roll angles, live in degrees.',
+        channels: ['pitch', 'roll'],
+        loop: [
+          ...number('pitch', 'input.rotation(Rotation.Pitch)'),
+          ...number('roll', 'input.rotation(Rotation.Roll)'),
+        ],
+        build: 'No wiring — strap the whole micro:bit (plus battery pack) to your object and tilt it. Pitch and roll arrive in degrees. Great for steering.',
+      },
+      {
+        id: 'heading', emoji: '🧭', name: 'Compass',
+        desc: 'Which way it points, 0–360°, live.',
+        channels: ['heading'],
+        loop: number('heading', 'input.compassHeading()'),
+        build: 'No wiring. The first run asks you to calibrate — tilt the board to fill the circle of dots. Then spin your object like a dial.',
+      },
+      gesture('shake', 'Shake', 'Shake', '🫨',
+        'Fires once each shake.',
+        'No wiring — attach the board to anything shakeable. A maraca, a stuffed animal, a pool noodle.'),
+      gesture('tiltleft', 'Tilt left', 'TiltLeft', '👈',
+        'Fires when tipped left.',
+        'No wiring. Fires the moment the board tips past ~45° to the left — a quick flick, not a hold.'),
+      gesture('tiltright', 'Tilt right', 'TiltRight', '👉',
+        'Fires when tipped right.',
+        'No wiring. The mirror of tilt-left — pair the two to nudge something left/right.'),
+      gesture('logoup', 'Logo up', 'LogoUp', '⬆️',
+        'Logo end swings upward.',
+        'No wiring. Fires when the board is turned so the gold-logo end points up. Good for “raise it”.'),
+      gesture('logodown', 'Logo down', 'LogoDown', '⬇️',
+        'Logo end swings downward.',
+        'No wiring. Fires when the logo end points down — flip your object over to trigger it.'),
+      gesture('faceup', 'Face up', 'ScreenUp', '🔆',
+        'LEDs turned to face up.',
+        'No wiring. Fires when the LED side ends up facing the ceiling — lay your object flat, screen-up.'),
+      gesture('facedown', 'Face down', 'ScreenDown', '🌙',
+        'LEDs turned to face down.',
+        'No wiring. Fires when the LED side faces the floor — slam it down flat, or hide it.'),
+      gesture('freefall', 'Free fall', 'FreeFall', '🪂',
+        'Fires while dropping.',
+        'No wiring. Fires the instant the board is in the air — toss it up (and catch it!) or drop it onto a cushion.'),
+      gesture('g3', 'Small bump', 'ThreeG', '💥',
+        'A light 3g jolt.',
+        'No wiring. Fires on a light knock (3g) — a gentle tap or bump of your object.'),
+      gesture('g6', 'Hard hit', 'SixG', '💥',
+        'A hard 6g jolt.',
+        'No wiring. Fires on a firm whack (6g) — a solid smack or a real shake.'),
+      gesture('g8', 'Big slam', 'EightG', '💥',
+        'A big 8g jolt.',
+        'No wiring. Fires only on a big impact (8g) — a hard slam. Use for a “power move”.'),
+    ],
   },
   {
-    id: 'temp', emoji: '🌡️', name: 'Temperature',
-    desc: 'The chip’s temperature in °C.',
-    channels: ['temp'],
-    loop: number('temp', 'input.temperature()'),
-    build: 'No wiring. Warm the processor with your thumbs — it responds slowly, which makes for hilarious controls.',
+    id: 'ambient',
+    title: 'Ambient sensing',
+    desc: 'What the board senses about its surroundings, each a live number.',
+    inputs: [
+      {
+        id: 'light', emoji: '💡', name: 'Light',
+        desc: 'The LED grid doubles as a light sensor.',
+        channels: ['light'],
+        loop: number('light', 'input.lightLevel()'),
+        build: 'No wiring. Cover and uncover the LED grid with your hand, or shine a flashlight on it. Sends 0–255.',
+      },
+      {
+        id: 'temp', emoji: '🌡️', name: 'Temperature',
+        desc: 'The chip’s temperature in °C.',
+        channels: ['temp'],
+        loop: number('temp', 'input.temperature()'),
+        build: 'No wiring. Warm the processor with your thumbs — it responds slowly, which makes for hilarious controls.',
+      },
+      {
+        id: 'mic', emoji: '🎤', name: 'Sound',
+        desc: 'Microphone loudness.',
+        channels: ['mic'],
+        loop: number('mic', 'input.soundLevel()'),
+        build: 'No wiring. Clap, yell, blow, sing — loudness arrives as 0–255. The mic is next to the touch logo.',
+      },
+    ],
   },
-  {
-    id: 'mic', emoji: '🎤', name: 'Sound',
-    desc: 'Microphone loudness.',
-    channels: ['mic'],
-    loop: number('mic', 'input.soundLevel()'),
-    build: 'No wiring. Clap, yell, blow, sing — loudness arrives as 0–255. The mic is next to the touch logo.',
-  },
-  {
-    id: 'heading', emoji: '🧭', name: 'Compass',
-    desc: 'Which way the board is pointing, 0–360°.',
-    channels: ['heading'],
-    loop: number('heading', 'input.compassHeading()'),
-    build: 'No wiring. The first run asks you to calibrate — tilt the board to fill the circle of dots. Then spin your object like a dial.',
-  },
-  pinInput(0),
-  pinInput(1),
-  pinInput(2),
 ];
+
+// Flat list of every input, for code/steps generation (order = section order).
+export const INPUTS = SECTIONS.flatMap((s) => s.inputs);
 
 // --- Code + steps generation ------------------------------------------------
 
@@ -201,37 +262,48 @@ export function initBuilder({ grid, codeEl, stepsEl }) {
   const selected = new Set();
   const pinModes = { p0: 'touch', p1: 'touch', p2: 'touch' };
 
+  function makeTile(input) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'tile tile-pick';
+    tile.setAttribute('aria-pressed', String(selected.has(input.id)));
+    tile.dataset.id = input.id;
+
+    const v = variantOf(input, pinModes);
+    const tags = v.channels.map((c) => `<span class="tag">${c}</span>`).join('');
+    const modePicker = input.modes
+      ? `<label class="tile-mode">as
+           <select data-pin="${input.id}">
+             ${Object.entries(input.modes)
+               .map(([id, m]) =>
+                 `<option value="${id}"${id === pinModes[input.id] ? ' selected' : ''}>${m.label}</option>`)
+               .join('')}
+           </select>
+         </label>`
+      : '';
+
+    tile.innerHTML = `
+      <span class="tile-check" aria-hidden="true"></span>
+      <span class="tile-emoji">${input.emoji}</span>
+      <h3>${input.name}</h3>
+      <p>${input.desc}</p>
+      ${modePicker}
+      <div class="tags">${tags}</div>
+    `;
+    return tile;
+  }
+
   function renderGrid() {
     grid.innerHTML = '';
-    for (const input of INPUTS) {
-      const tile = document.createElement('button');
-      tile.type = 'button';
-      tile.className = 'tile tile-pick';
-      tile.setAttribute('aria-pressed', String(selected.has(input.id)));
-      tile.dataset.id = input.id;
-
-      const v = variantOf(input, pinModes);
-      const tags = v.channels.map((c) => `<span class="tag">${c}</span>`).join('');
-      const modePicker = input.modes
-        ? `<label class="tile-mode">as
-             <select data-pin="${input.id}">
-               ${Object.entries(input.modes)
-                 .map(([id, m]) =>
-                   `<option value="${id}"${id === pinModes[input.id] ? ' selected' : ''}>${m.label}</option>`)
-                 .join('')}
-             </select>
-           </label>`
-        : '';
-
-      tile.innerHTML = `
-        <span class="tile-check" aria-hidden="true"></span>
-        <span class="tile-emoji">${input.emoji}</span>
-        <h3>${input.name}</h3>
-        <p>${input.desc}</p>
-        ${modePicker}
-        <div class="tags">${tags}</div>
-      `;
-      grid.appendChild(tile);
+    for (const section of SECTIONS) {
+      const sec = document.createElement('div');
+      sec.className = 'pick-section';
+      sec.innerHTML = `<div class="pick-head"><h3>${section.title}</h3><p>${section.desc}</p></div>`;
+      const tiles = document.createElement('div');
+      tiles.className = 'tiles';
+      for (const input of section.inputs) tiles.appendChild(makeTile(input));
+      sec.appendChild(tiles);
+      grid.appendChild(sec);
     }
   }
 

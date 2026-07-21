@@ -331,6 +331,18 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px;
 }
 
+/* ---------- Builder sections ---------- */
+.pick-section + .pick-section { margin-top: 30px; }
+.pick-head { margin-bottom: 12px; }
+.pick-head h3 {
+  margin: 0 0 3px; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: 9px;
+}
+.pick-head h3::before {
+  content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--yellow); flex: none;
+}
+.pick-head p { margin: 0; font-size: .86rem; color: var(--ink-soft); max-width: 64ch; }
+
 /* ---------- Builder tiles (selectable) ---------- */
 .tile-pick {
   position: relative; font: inherit; text-align: left; cursor: pointer;
