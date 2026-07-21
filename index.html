@@ -14,41 +14,139 @@
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="wordmark" href="#top"><span class="mark" aria-hidden="true"></span> Experimental Controllers</a>
-      <div class="conn" role="status">
-        <span id="status-dot" class="dot" data-state="disconnected"></span>
-        <span id="status-text" class="conn-text">Not connected</span>
-        <button id="connect-btn" class="btn">Connect micro:bit</button>
+      <a class="wordmark" href="#home"><span class="mark" aria-hidden="true"></span> Experimental Controllers</a>
+
+      <nav class="menu" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
+        <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Set&nbsp;up</button>
+        <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Starters</button>
+        <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
+      </nav>
+
+      <div class="topbar-right">
+        <!-- Persistent live-signal chip; opens the full visualizer popover -->
+        <button class="signal" id="signal-toggle" aria-expanded="false" aria-controls="viz-pop" title="Live input">
+          <span class="sig-label">Live</span>
+          <span id="mini-trigger" class="sig-dot" aria-hidden="true"></span>
+          <span id="mini-state" class="sig-dot sig-state" data-on="false" aria-hidden="true"></span>
+          <canvas id="mini-canvas" class="sig-spark" width="120" height="34" aria-hidden="true"></canvas>
+          <span id="mini-value" class="sig-num">0.00</span>
+        </button>
+
+        <div class="conn" role="status">
+          <span id="status-dot" class="dot" data-state="disconnected"></span>
+          <span id="status-text" class="conn-text">Not connected</span>
+          <button id="connect-btn" class="btn">Connect</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <div id="unsupported-banner" class="note wrap" hidden>
-    Web Bluetooth needs <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) —
-    Safari and Firefox can't connect. No micro:bit handy? Try
-    <a href="#" id="banner-demo-link" data-tab-target="play">Demo mode</a>.
+  <!-- Global visualizer popover -->
+  <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
+    <div class="viz-pop-head">
+      <strong>Live input</strong>
+      <button id="demo-toggle" class="linkish">Demo mode</button>
+      <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div id="demo-panel" class="demo" hidden>
+      <button id="demo-trigger" class="btn btn-soft">Send <code>trigger</code></button>
+      <button id="demo-state" class="btn btn-soft" data-on="false">Toggle <code>state</code></button>
+      <label class="demo-value">
+        <code>value</code>
+        <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
+      </label>
+      <span class="demo-hint">Press <kbd>Space</kbd> for a trigger</span>
+    </div>
+
+    <div class="live">
+      <div class="live-card">
+        <span class="live-label"><code>trigger</code></span>
+        <div id="trigger-light" class="pop"></div>
+        <span class="live-meta">Fired <strong id="trigger-count">0</strong></span>
+      </div>
+      <div class="live-card">
+        <span class="live-label"><code>state</code></span>
+        <div id="state-pill" class="toggle" data-on="false">false</div>
+        <span class="live-meta">Held on / off</span>
+      </div>
+      <div class="live-card live-wide">
+        <span class="live-label"><code>value</code><span id="value-readout" class="readnum">0.00</span></span>
+        <div class="plot"><canvas id="value-canvas" width="600" height="130"></canvas></div>
+      </div>
+    </div>
   </div>
 
-  <main class="wrap" id="top">
+  <div id="unsupported-banner" class="note wrap" hidden>
+    Web Bluetooth needs <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) —
+    Safari and Firefox can't connect. No micro:bit handy? Open
+    <a href="#" id="banner-demo-link">Live → Demo mode</a>.
+  </div>
 
-    <section class="hero">
-      <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
-      <h1>Turn everyday things into game controllers.</h1>
-      <p class="hero-sub">
-        Wire a real-world object to a micro:bit. Its sensors read how you touch, tilt, or shake it
-        and send that over Bluetooth to this page, where it plays a little game. Flash a starter,
-        connect, and go.
-      </p>
-    </section>
+  <main class="wrap">
 
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="true">Set&nbsp;up</button>
-      <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Starters</button>
-      <button class="tab" role="tab" id="tab-play" aria-controls="panel-play" aria-selected="false" tabindex="-1">Play</button>
-    </nav>
+    <!-- SCREEN: Home -->
+    <div class="panel screen" role="tabpanel" id="panel-home" aria-labelledby="tab-home">
+      <section class="home-hero">
+        <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
+        <h1>Experimental Controllers</h1>
+        <p class="home-lede">
+          Turn everyday objects into game controllers. Build a physical controller from a micro:bit,
+          flash it, connect it over Bluetooth, and use it to play a browser game.
+        </p>
+        <div class="home-actions">
+          <button class="btn btn-lg" data-tab-target="setup">Get started &rarr;</button>
+          <!-- TODO: replace href with the real slides URL, then re-add target="_blank" rel="noopener" -->
+          <a class="btn btn-soft btn-lg" id="slides-link" href="#">Workshop slides &#8599;</a>
+        </div>
 
-    <!-- TAB: Set up -->
-    <div class="panel" role="tabpanel" id="panel-setup" aria-labelledby="tab-setup">
+        <dl class="home-meta">
+          <div class="meta-block">
+            <dt>Instructors</dt>
+            <!-- TODO: real instructor names -->
+            <dd>Instructor One &amp; Instructor Two</dd>
+          </div>
+          <div class="meta-block">
+            <dt>You'll need</dt>
+            <dd>A micro:bit v2 + a browser (Chrome / Edge)</dd>
+          </div>
+          <div class="meta-block">
+            <dt>You'll build</dt>
+            <dd>An unconventional controller for Flappy Bird</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="home-cards">
+        <button class="home-card" data-tab-target="setup">
+          <span class="home-card-num">1</span>
+          <h3>Set up</h3>
+          <p>Get your micro:bit talking to the browser over Bluetooth.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+        <button class="home-card" data-tab-target="starters">
+          <span class="home-card-num">2</span>
+          <h3>Starters</h3>
+          <p>Pick a sensor and flash the example code for it.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+        <button class="home-card" data-tab-target="game">
+          <span class="home-card-num">3</span>
+          <h3>Game</h3>
+          <p>Connect your controller and play.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+      </div>
+
+      <nav class="pager">
+        <span></span>
+        <button class="pager-btn pager-next" data-tab-target="setup">Set up <span aria-hidden="true">&rarr;</span></button>
+      </nav>
+    </div>
+
+    <!-- SCREEN: Set up -->
+    <div class="panel screen" role="tabpanel" id="panel-setup" aria-labelledby="tab-setup" hidden>
       <section class="block" id="setup">
         <div class="block-head"><h2>Set up your micro:bit</h2></div>
         <p class="lead">
@@ -138,10 +236,10 @@
             <div class="step-body">
               <h3>Connect</h3>
               <p>
-                Click <strong>Connect micro:bit</strong> at the top of this page. In the browser's
-                Bluetooth list, pick the <code>BBC micro:bit [·····]</code> that matches your five
-                letters. The status dot turns green and your inputs appear under
-                <a href="#visualizer">Play</a>.
+                Click <strong>Connect</strong> in the top bar. In the browser's Bluetooth list, pick the
+                <code>BBC micro:bit [·····]</code> that matches your five letters. The status dot turns
+                green and your input shows up in the <strong>Live</strong> panel (top-right) from any
+                screen.
               </p>
               <figure class="shot">
                 <div class="shot-ph" data-file="assets/setup-6-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
@@ -150,15 +248,20 @@
           </li>
         </ol>
       </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="home"><span aria-hidden="true">&larr;</span> Home</button>
+        <button class="pager-btn pager-next" data-tab-target="starters">Starters <span aria-hidden="true">&rarr;</span></button>
+      </nav>
     </div>
 
-    <!-- TAB: Starters -->
-    <div class="panel" role="tabpanel" id="panel-starters" aria-labelledby="tab-starters" hidden>
+    <!-- SCREEN: Starters -->
+    <div class="panel screen" role="tabpanel" id="panel-starters" aria-labelledby="tab-starters" hidden>
       <section class="block" id="sensors">
         <div class="block-head"><h2>Sensor starters</h2></div>
         <p class="lead">
           Each starter reads one kind of micro:bit input and sends it with the protocol below. Open
-          one in MakeCode, tweak it for your object, and flash it (see the Set&nbsp;up tab).
+          one in MakeCode, tweak it for your object, and flash it (see the Set&nbsp;up screen).
         </p>
         <div class="tiles" id="sensor-grid"><!-- populated by js/sensors.js --></div>
       </section>
@@ -184,58 +287,33 @@
           </div>
         </div>
       </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Set up</button>
+        <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
+      </nav>
     </div>
 
-    <!-- TAB: Play -->
-    <div class="panel" role="tabpanel" id="panel-play" aria-labelledby="tab-play" hidden>
-      <section class="block" id="visualizer">
-        <div class="block-head"><h2>Watch it come in</h2></div>
-        <p class="lead">
-          Connect a micro:bit up top, or turn on
-          <button id="demo-toggle" class="linkish">Demo mode</button> to try it without hardware.
-        </p>
-
-        <div id="demo-panel" class="demo" hidden>
-          <span class="demo-label">Demo</span>
-          <button id="demo-trigger" class="btn btn-soft">Send <code>trigger</code></button>
-          <button id="demo-state" class="btn btn-soft" data-on="false">Toggle <code>state</code></button>
-          <label class="demo-value">
-            <code>value</code>
-            <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
-          </label>
-          <span class="demo-hint">Press <kbd>Space</kbd> for a trigger</span>
-        </div>
-
-        <div class="live">
-          <div class="card live-card">
-            <span class="live-label"><code>trigger</code></span>
-            <div id="trigger-light" class="pop"></div>
-            <span class="live-meta">Fired <strong id="trigger-count">0</strong></span>
-          </div>
-          <div class="card live-card">
-            <span class="live-label"><code>state</code></span>
-            <div id="state-pill" class="toggle" data-on="false">false</div>
-            <span class="live-meta">Held on / off</span>
-          </div>
-          <div class="card live-card live-wide">
-            <span class="live-label"><code>value</code><span id="value-readout" class="readnum">0.00</span></span>
-            <div class="plot"><canvas id="value-canvas" width="600" height="150"></canvas></div>
-          </div>
-        </div>
-      </section>
-
+    <!-- SCREEN: Game -->
+    <div class="panel screen" role="tabpanel" id="panel-game" aria-labelledby="tab-game" hidden>
       <section class="block" id="game">
         <div class="block-head"><h2>Play</h2></div>
         <p class="lead">
-          The game reads the same messages. It's a placeholder for now — my collaborator is adding
-          Flappy Bird here. The bird already flaps on <code>trigger</code>, so you can check your
-          controller works end to end.
+          Connect your controller in the top bar, then use it here. Right now it's a placeholder — my
+          collaborator is adding <strong>Flappy Bird</strong>. The bird already flaps on
+          <code>trigger</code>, so you can check your controller works end to end. Watch the raw input
+          any time in the <strong>Live</strong> panel (top-right).
         </p>
-        <div class="screen">
+        <div class="screen-frame">
           <canvas id="game-canvas" width="480" height="320"></canvas>
           <span class="screen-badge">Placeholder · Flappy Bird soon</span>
         </div>
       </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="starters"><span aria-hidden="true">&larr;</span> Starters</button>
+        <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
+      </nav>
     </div>
 
   </main>

@@ -24,6 +24,35 @@ if (!isSupported()) {
   document.getElementById('unsupported-banner').hidden = false;
 }
 
+// --- Live visualizer popover ----------------------------------------------
+const signalToggle = document.getElementById('signal-toggle');
+const vizPop = document.getElementById('viz-pop');
+const vizClose = document.getElementById('viz-close');
+const bannerDemoLink = document.getElementById('banner-demo-link');
+
+function openViz(open) {
+  vizPop.hidden = !open;
+  signalToggle.setAttribute('aria-expanded', String(open));
+}
+
+signalToggle.addEventListener('click', () => openViz(vizPop.hidden));
+vizClose.addEventListener('click', () => openViz(false));
+
+// Close on Escape or a click outside the popover (but not on the toggle).
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openViz(false); });
+document.addEventListener('click', (e) => {
+  if (vizPop.hidden) return;
+  if (vizPop.contains(e.target) || signalToggle.contains(e.target)) return;
+  openViz(false);
+});
+
+// The banner's "Live → Demo mode" link opens the popover; demo.js enables demo.
+bannerDemoLink?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // don't let the outside-click handler immediately close it
+  openViz(true);
+});
+
 // --- Connection button + status --------------------------------------------
 const connectBtn = document.getElementById('connect-btn');
 const statusDot = document.getElementById('status-dot');
@@ -46,7 +75,7 @@ onStatus(({ state, message }) => {
   } else {
     statusText.textContent = 'Not connected';
     connectBtn.disabled = false;
-    connectBtn.textContent = 'Connect micro:bit';
+    connectBtn.textContent = 'Connect';
   }
 });
 

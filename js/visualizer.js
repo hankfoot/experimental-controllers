@@ -1,20 +1,31 @@
-// Live visualizer for the three input types. Sensor-agnostic: it just renders
-// whatever trigger / state / value messages arrive on the bus.
+// Live visualizer. Sensor-agnostic: it renders whatever trigger / state / value
+// messages arrive on the bus. It drives TWO views at once from one shared history:
+//   - the compact "Live" chip in the navbar (mini sparkline + dots)
+//   - the full popover (trigger pop, state pill, big value plot)
+// Either set of elements may be absent; everything is guarded.
 
 import { onInput } from './bus.js';
 
 export function initVisualizer() {
-  const light = document.getElementById('trigger-light');
-  const count = document.getElementById('trigger-count');
-  const pill = document.getElementById('state-pill');
-  const readout = document.getElementById('value-readout');
-  const canvas = document.getElementById('value-canvas');
-  const ctx = canvas.getContext('2d');
+  const el = (id) => document.getElementById(id);
+
+  const triggerFull = el('trigger-light');
+  const triggerMini = el('mini-trigger');
+  const statePill = el('state-pill');
+  const stateMini = el('mini-state');
+  const valFull = el('value-readout');
+  const valMini = el('mini-value');
+  const countEl = el('trigger-count');
+
+  const canvases = ['value-canvas', 'mini-canvas']
+    .map((id) => {
+      const c = el(id);
+      return c ? { c, ctx: c.getContext('2d'), mini: id === 'mini-canvas' } : null;
+    })
+    .filter(Boolean);
 
   let triggers = 0;
   let flashUntil = 0;
-
-  // Rolling history of continuous values (newest at the end).
   const HISTORY = 120;
   const history = new Array(HISTORY).fill(0);
   let current = 0;
@@ -22,104 +33,92 @@ export function initVisualizer() {
   onInput((msg) => {
     if (msg.type === 'trigger') {
       triggers++;
-      count.textContent = String(triggers);
-      light.classList.add('flash');
-      flashUntil = performance.now() + 120;
+      if (countEl) countEl.textContent = String(triggers);
+      triggerFull?.classList.add('flash');
+      triggerMini?.classList.add('flash');
+      flashUntil = performance.now() + 130;
     } else if (msg.type === 'state') {
-      pill.dataset.on = String(msg.value);
-      pill.textContent = String(msg.value);
+      const on = String(msg.value);
+      if (statePill) { statePill.dataset.on = on; statePill.textContent = String(msg.value); }
+      if (stateMini) stateMini.dataset.on = on;
     } else if (msg.type === 'value') {
       current = msg.value;
-      readout.textContent = msg.value.toFixed(2);
+      const txt = msg.value.toFixed(2);
+      if (valFull) valFull.textContent = txt;
+      if (valMini) valMini.textContent = txt;
     }
   });
 
-  // Match the canvas backing store to its displayed size for crisp lines.
-  // Returns false when the canvas has no size yet (e.g. its tab is hidden).
-  function fitCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0) return false;
+  // Size a canvas to its displayed box. Returns false if it has no size (hidden).
+  function fit({ c, ctx }) {
+    const r = c.getBoundingClientRect();
+    if (r.width === 0) return false;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.round(rect.width * dpr));
-    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    const w = Math.max(1, Math.round(r.width * dpr));
+    const h = Math.max(1, Math.round(r.height * dpr));
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return true;
   }
-  fitCanvas();
-  window.addEventListener('resize', fitCanvas);
 
   const accentColor = () =>
-    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f2795a';
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563eb';
 
-  const traceAt = (i, w, h, stepX, pad) => ({
-    x: i * stepX,
-    y: h - history[i] * (h - pad * 2) - pad,
-  });
+  function drawTrace(entry, color) {
+    if (!fit(entry)) return;
+    const { c, ctx, mini } = entry;
+    const w = c.clientWidth;
+    const h = c.clientHeight;
+    const pad = mini ? 3 : 8;
+    const stepX = w / (HISTORY - 1);
+    const pt = (i) => ({ x: i * stepX, y: h - history[i] * (h - pad * 2) - pad });
 
-  function frame(now) {
-    // Turn the trigger light off once its flash window elapses.
-    if (light.classList.contains('flash') && now > flashUntil) {
-      light.classList.remove('flash');
-    }
-
-    // Re-fit if the displayed size changed (e.g. the Play tab just became visible).
-    const dpr = window.devicePixelRatio || 1;
-    if (canvas.clientWidth && canvas.width !== Math.round(canvas.clientWidth * dpr)) {
-      fitCanvas();
-    }
-
-    // Push the current value into the rolling history and redraw the plot.
-    history.push(current);
-    history.shift();
-
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (!w) { requestAnimationFrame(frame); return; } // tab hidden — skip drawing
-    const c = accentColor();
     ctx.clearRect(0, 0, w, h);
 
-    // Soft horizontal guide lines (light, minimal).
-    ctx.strokeStyle = 'rgba(58,53,45,.07)';
-    ctx.lineWidth = 1;
-    for (let j = 1; j < 4; j++) {
-      const y = Math.round((j / 4) * h) + 0.5;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    if (!mini) {
+      ctx.strokeStyle = 'rgba(58,53,45,.07)';
+      ctx.lineWidth = 1;
+      for (let j = 1; j < 4; j++) {
+        const y = Math.round((j / 4) * h) + 0.5;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
     }
 
-    const stepX = w / (HISTORY - 1);
-    const pad = 8;
-
-    // Soft coral fill under the trace.
+    // fill under the trace
     ctx.beginPath();
-    for (let i = 0; i < HISTORY; i++) {
-      const p = traceAt(i, w, h, stepX, pad);
-      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-    }
+    for (let i = 0; i < HISTORY; i++) { const p = pt(i); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
     ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-    ctx.fillStyle = c + '1f';
+    ctx.fillStyle = color + (mini ? '14' : '1f');
     ctx.fill();
 
-    // The friendly rounded trace.
+    // the trace
     ctx.beginPath();
-    for (let i = 0; i < HISTORY; i++) {
-      const p = traceAt(i, w, h, stepX, pad);
-      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
-    }
-    ctx.strokeStyle = c;
-    ctx.lineWidth = 2.5;
+    for (let i = 0; i < HISTORY; i++) { const p = pt(i); i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); }
+    ctx.strokeStyle = color;
+    ctx.lineWidth = mini ? 1.75 : 2.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // Leading-edge dot with a soft white ring.
-    const last = traceAt(HISTORY - 1, w, h, stepX, pad);
-    ctx.beginPath();
-    ctx.arc(last.x - 1, last.y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = c;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#fff';
-    ctx.stroke();
+    if (!mini) {
+      const last = pt(HISTORY - 1);
+      ctx.beginPath(); ctx.arc(last.x - 1, last.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.stroke();
+    }
+  }
+
+  function frame(now) {
+    if (now > flashUntil) {
+      triggerFull?.classList.remove('flash');
+      triggerMini?.classList.remove('flash');
+    }
+
+    history.push(current);
+    history.shift();
+
+    const color = accentColor();
+    for (const entry of canvases) drawTrace(entry, color);
 
     requestAnimationFrame(frame);
   }
