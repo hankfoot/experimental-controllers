@@ -73,14 +73,6 @@ function pinInput(n) {
           `Make a switch: clip a wire from 3V to one piece of foil, and another from P${n} to a second piece. ` +
           `When the foils touch, the circuit closes and sends 1. Great for jaws, doors, stomp pads.`,
       },
-      analog: {
-        label: 'Analog sensor',
-        channels: [ch],
-        loop: number(ch, `pins.analogReadPin(AnalogPin.P${n})`),
-        build:
-          `Connect a variable resistor between 3V and P${n} (potentiometer: outer legs to 3V and GND, ` +
-          `middle to P${n}). Sends 0–1023 as it changes.`,
-      },
     },
   };
 }
@@ -136,8 +128,8 @@ export const SECTIONS = [
   },
   {
     id: 'motion',
-    title: 'Motion & direction',
-    desc: 'How the board is tilted, pointed, moved, or flicked. Tilt and compass stream a live number; the rest fire once when they happen.',
+    title: 'Tilt & direction',
+    desc: 'How the board is angled or pointed, streamed as a live number every tick.',
     inputs: [
       {
         id: 'tilt', emoji: '📐', name: 'Tilt',
@@ -156,6 +148,13 @@ export const SECTIONS = [
         loop: number('heading', 'input.compassHeading()'),
         build: 'No wiring. The first run asks you to calibrate — tilt the board to fill the circle of dots. Then spin your object like a dial.',
       },
+    ],
+  },
+  {
+    id: 'gestures',
+    title: 'Gestures',
+    desc: 'One-off moves — the board flags the instant each happens, so unlike the live inputs they add nothing to the Bluetooth load. Lean on these when you can.',
+    inputs: [
       gesture('shake', 'Shake', 'Shake', '🫨',
         'Fires once each shake.',
         'No wiring — attach the board to anything shakeable. A maraca, a stuffed animal, a pool noodle.'),
