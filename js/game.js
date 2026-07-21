@@ -29,46 +29,51 @@ export function initGame() {
     if (bird.y > H - bird.r) { bird.y = H - bird.r; bird.vy *= -0.35; }
     if (bird.y < bird.r) { bird.y = bird.r; bird.vy = 0; }
 
-    // Night sky
+    // Soft daytime sky
     ctx.clearRect(0, 0, W, H);
     const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, '#0a1526');
-    sky.addColorStop(1, '#12233a');
+    sky.addColorStop(0, '#e8f6ff');
+    sky.addColorStop(1, '#cfe9fb');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
-    // Static starfield (deterministic — no RNG in the draw loop)
-    ctx.fillStyle = 'rgba(220,239,228,.5)';
-    for (let i = 0; i < 26; i++) {
-      const sx = (i * 97) % W;
-      const sy = (i * 53) % (H - 60);
-      ctx.fillRect(sx, sy, 1.5, 1.5);
-    }
+    // A couple of soft static clouds (deterministic — no RNG in the draw loop)
+    const cloud = (cx, cy, s) => {
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      [[0, 0, 1], [18, 4, .8], [-18, 4, .8], [8, -6, .7]].forEach(([dx, dy, r]) => {
+        ctx.beginPath();
+        ctx.arc(cx + dx * s, cy + dy * s, 14 * s * r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    };
+    cloud(90, 70, 1);
+    cloud(360, 50, .8);
 
-    // Ground with a phosphor edge
-    ctx.fillStyle = '#0c1310';
-    ctx.fillRect(0, H - 22, W, 22);
-    ctx.fillStyle = '#57ffa6';
-    ctx.fillRect(0, H - 22, W, 2);
+    // Grassy ground
+    ctx.fillStyle = '#bfe39a';
+    ctx.fillRect(0, H - 24, W, 24);
+    ctx.fillStyle = '#a9d67f';
+    ctx.fillRect(0, H - 24, W, 4);
 
-    // Bird — amber with a soft glow
-    ctx.save();
-    ctx.shadowColor = '#ffb43d';
-    ctx.shadowBlur = 14;
+    // Bird — cheerful round yellow
     ctx.beginPath();
     ctx.arc(bird.x, bird.y, bird.r, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffcf5c';
+    ctx.fillStyle = '#ffd24c';
     ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = '#e0952a';
+    ctx.strokeStyle = '#f0b429';
     ctx.lineWidth = 2;
     ctx.stroke();
+    // rosy cheek
+    ctx.fillStyle = 'rgba(242,121,90,.5)';
+    ctx.beginPath();
+    ctx.arc(bird.x - 3, bird.y + 3, 3.2, 0, Math.PI * 2);
+    ctx.fill();
     // eye + beak
-    ctx.fillStyle = '#0a0f0d';
+    ctx.fillStyle = '#3a352d';
     ctx.beginPath();
     ctx.arc(bird.x + 5, bird.y - 4, 2.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ff7a2f';
+    ctx.fillStyle = '#f2795a';
     ctx.beginPath();
     ctx.moveTo(bird.x + bird.r - 2, bird.y - 2);
     ctx.lineTo(bird.x + bird.r + 7, bird.y);
@@ -77,8 +82,8 @@ export function initGame() {
     ctx.fill();
 
     // Hint text
-    ctx.fillStyle = 'rgba(87,255,166,.7)';
-    ctx.font = '12px "Space Mono", monospace';
+    ctx.fillStyle = 'rgba(58,53,45,.4)';
+    ctx.font = '600 13px "Nunito", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('trigger → flap', W / 2, 28);
 
