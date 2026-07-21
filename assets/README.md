@@ -8,6 +8,7 @@ placeholder box on the page for the real image:
 | `setup-microbit.png` | A micro:bit v2 board |
 | `setup-project.png` | The starter project open in MakeCode (micro:bit simulator visible) |
 | `setup-pair.png` | The browser's pairing pop-up during the first download |
+| `setup-battery.png` | A micro:bit running off an attached battery pack (optional step) |
 | `setup-name.png` | The five-letter name scrolling across the micro:bit LEDs |
 | `setup-chooser.png` | The browser's Bluetooth chooser listing "BBC micro:bit […]" |
 
