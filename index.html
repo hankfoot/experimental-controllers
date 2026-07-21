@@ -145,8 +145,8 @@
       <section class="block" id="setup">
         <div class="block-head"><h2>Set up your micro:bit</h2></div>
         <p class="lead">
-          A one-time setup: add Bluetooth to your code in MakeCode, flash a starter, and find your
-          board's Bluetooth name so you can connect to it. About five minutes.
+          A one-time setup: open the ready-made project, flash it, find your board's Bluetooth name,
+          and connect. Takes a couple of minutes.
         </p>
 
         <ol class="steps">
@@ -155,8 +155,7 @@
             <div class="step-body">
               <h3>Grab a micro:bit v2</h3>
               <p>
-                You'll need a <strong>micro:bit v2</strong> (the microphone and logo-touch inputs are
-                v2-only) and a USB cable. A battery pack is handy once you unplug from the computer.
+                You'll need a <strong>micro:bit v2</strong>and a USB cable. A battery pack is handy once you unplug from the computer.
               </p>
             </div>
           </li>
@@ -164,54 +163,33 @@
           <li class="step">
             <span class="step-num">2</span>
             <div class="step-body">
-              <h3>Open MakeCode and add Bluetooth</h3>
+              <h3>Open the starter project</h3>
               <p>
-                Go to <a href="https://makecode.microbit.org" target="_blank" rel="noopener">makecode.microbit.org</a>
-                and start a new project. Open <strong>Extensions</strong>, search for
-                <strong>Bluetooth</strong>, and add it. MakeCode will warn that this removes the Radio
-                blocks — that's expected; we don't use radio.
+                Open <a href="https://makecode.microbit.org/_Vx7DwC51d7f3" target="_blank" rel="noopener">the
+                starter project in MakeCode</a>. It already has Bluetooth switched on with pairing
+                turned off, so there's nothing to configure — it's ready to flash.
               </p>
-              <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-2-extension.png">MakeCode Extensions — adding the “Bluetooth” extension</div>
-              </figure>
             </div>
           </li>
 
           <li class="step">
             <span class="step-num">3</span>
             <div class="step-body">
-              <h3>Turn off pairing</h3>
+              <h3>Flash it to your micro:bit</h3>
               <p>
-                Click the <strong>gear</strong> (top-right) → <strong>Project Settings</strong>. In the
-                Bluetooth section, choose <strong>“No Pairing Required: Anyone can connect via
-                Bluetooth.”</strong> This lets the browser connect straight away, without first pairing
-                the micro:bit in your computer's Bluetooth settings.
+                Plug the micro:bit in over USB, click <strong>Download</strong> in MakeCode, and drag
+                the downloaded <code>.hex</code> onto the <strong>MICROBIT</strong> drive (or use
+                MakeCode's <em>Connect device</em> to flash directly). The yellow light blinks while it
+                copies, then stops when it's done.
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-3-pairing.png">Project Settings — Bluetooth pairing set to “No Pairing Required”</div>
+                <div class="shot-ph" data-file="assets/setup-3-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
               </figure>
             </div>
           </li>
 
           <li class="step">
             <span class="step-num">4</span>
-            <div class="step-body">
-              <h3>Flash a starter</h3>
-              <p>
-                Pick a <a href="#sensors">sensor starter</a> and open it in MakeCode. Plug the
-                micro:bit in over USB, click <strong>Download</strong>, and drag the downloaded
-                <code>.hex</code> onto the <strong>MICROBIT</strong> drive (or use MakeCode's
-                <em>Connect device</em> to flash directly). The yellow light blinks while it copies,
-                then stops when it's done.
-              </p>
-              <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-4-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
-              </figure>
-            </div>
-          </li>
-
-          <li class="step">
-            <span class="step-num">5</span>
             <div class="step-body">
               <h3>Find your micro:bit's name</h3>
               <p>
@@ -221,13 +199,13 @@
                 in a room full of boards.
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-5-name.png">The five-letter name scrolling across the micro:bit LEDs</div>
+                <div class="shot-ph" data-file="assets/setup-4-name.png">The five-letter name scrolling across the micro:bit LEDs</div>
               </figure>
             </div>
           </li>
 
           <li class="step">
-            <span class="step-num">6</span>
+            <span class="step-num">5</span>
             <div class="step-body">
               <h3>Connect</h3>
               <p>
@@ -237,7 +215,7 @@
                 screen.
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-6-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
+                <div class="shot-ph" data-file="assets/setup-5-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
               </figure>
             </div>
           </li>
