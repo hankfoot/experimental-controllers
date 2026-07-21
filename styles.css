@@ -259,6 +259,28 @@ em { color: var(--accent); font-style: italic; }
 }
 .shot img { display: block; max-width: 460px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
 
+/* Copy-paste code block */
+.code-block { position: relative; margin-top: 6px; max-width: 560px; }
+.code-block pre {
+  margin: 0; overflow-x: auto;
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; color: var(--ink);
+  font-family: var(--mono); font-size: .82rem; line-height: 1.6;
+}
+.code-block code {
+  background: none; border: none; padding: 0;
+  font-size: inherit; color: inherit; white-space: pre;
+}
+.code-copy {
+  position: absolute; top: 8px; right: 8px;
+  font: inherit; font-weight: 600; font-size: .72rem;
+  background: var(--bg); color: var(--ink-soft); border: 1px solid var(--line);
+  padding: 4px 11px; border-radius: 7px; cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.code-copy:hover { color: var(--ink); border-color: var(--ink-faint); }
+.code-copy.copied { color: var(--green-ink); border-color: var(--green); }
+
 /* ---------- Cards (shared) ---------- */
 .card {
   background: var(--bg); border: 1px solid var(--line);

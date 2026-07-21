@@ -17,6 +17,23 @@ renderSensors(document.getElementById('sensor-grid'));
 initVisualizer();
 initDemo();
 
+// --- Copy buttons on code blocks -------------------------------------------
+document.querySelectorAll('.code-copy').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    const code = btn.parentElement.querySelector('code');
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code.textContent);
+      const original = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1400);
+    } catch {
+      /* clipboard blocked (e.g. non-secure context) — user can select manually */
+    }
+  });
+});
+
 // --- Browser support banner ------------------------------------------------
 if (!isSupported()) {
   document.getElementById('unsupported-banner').hidden = false;

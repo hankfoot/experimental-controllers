@@ -145,8 +145,8 @@
       <section class="block" id="setup">
         <div class="block-head"><h2>Set up your micro:bit</h2></div>
         <p class="lead">
-          A one-time setup: open the ready-made project, flash it, find your board's Bluetooth name,
-          and connect. Takes a couple of minutes.
+          A one-time setup: open the ready-made project, paste in the starter code, flash it, find your
+          board's Bluetooth name, and connect. Takes a couple of minutes.
         </p>
 
         <ol class="steps">
@@ -163,17 +163,49 @@
           <li class="step">
             <span class="step-num">2</span>
             <div class="step-body">
-              <h3>Open the starter project</h3>
+              <h3>Set up MakeCode</h3>
               <p>
-                Open <a href="https://makecode.microbit.org/_Vx7DwC51d7f3" target="_blank" rel="noopener">the
-                starter project in MakeCode</a>. It already has Bluetooth switched on with pairing
-                turned off, so there's nothing to configure — it's ready to flash.
+                Open the <a href="https://makecode.microbit.org/_Vx7DwC51d7f3" target="_blank" rel="noopener">
+                blank starter project</a> in MakeCode, then click <strong>Edit Code</strong>. This file already has Bluetooth settings pre-configured, so make sure to work from here. You'll know it loaded correctly when the editor shows a micro:bit in the simulator on the left.
               </p>
+              <figure class="shot">
+                <div class="shot-ph" data-file="assets/setup-project.png">The starter project open in MakeCode, showing the micro:bit simulator</div>
+              </figure>
             </div>
           </li>
 
           <li class="step">
             <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Paste in the starter code</h3>
+              <p>
+                Switch to the <strong>JavaScript</strong> tab at the top of the editor and paste this in.
+                It scrolls your micro:bit's Bluetooth name across the LEDs on a loop until the browser
+                connects, then shows a checkmark.
+              </p>
+              <div class="code-block">
+                <button class="code-copy" type="button">Copy</button>
+                <pre><code>bluetooth.startUartService()
+let connected = false
+bluetooth.onBluetoothConnected(function () {
+    connected = true
+})
+bluetooth.onBluetoothDisconnected(function () {
+    connected = false
+})
+basic.forever(function () {
+    if (connected) {
+        basic.showIcon(IconNames.Yes)
+    } else {
+        basic.showString(control.deviceName())
+    }
+})</code></pre>
+              </div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">4</span>
             <div class="step-body">
               <h3>Flash it to your micro:bit</h3>
               <p>
@@ -183,23 +215,7 @@
                 copies, then stops when it's done.
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-3-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
-              </figure>
-            </div>
-          </li>
-
-          <li class="step">
-            <span class="step-num">4</span>
-            <div class="step-body">
-              <h3>Find your micro:bit's name</h3>
-              <p>
-                Every micro:bit has a unique five-letter Bluetooth name and shows up as
-                <code>BBC micro:bit [zuzet]</code> (five letters of its own). When it powers on, the
-                starter scrolls that five-letter code across the LEDs — note yours so you can spot it
-                in a room full of boards.
-              </p>
-              <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-4-name.png">The five-letter name scrolling across the micro:bit LEDs</div>
+                <div class="shot-ph" data-file="assets/setup-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
               </figure>
             </div>
           </li>
@@ -207,15 +223,31 @@
           <li class="step">
             <span class="step-num">5</span>
             <div class="step-body">
+              <h3>Find your micro:bit's name</h3>
+              <p>
+                Every micro:bit has a unique five-letter Bluetooth name and shows up as
+                <code>BBC micro:bit [zuzet]</code> (five letters of its own). Your board is now scrolling
+                that five-letter code across the LEDs — note yours so you can spot it in a room full of
+                boards.
+              </p>
+              <figure class="shot">
+                <div class="shot-ph" data-file="assets/setup-name.png">The five-letter name scrolling across the micro:bit LEDs</div>
+              </figure>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">6</span>
+            <div class="step-body">
               <h3>Connect</h3>
               <p>
                 Click <strong>Connect</strong> in the top bar. In the browser's Bluetooth list, pick the
-                <code>BBC micro:bit [·····]</code> that matches your five letters. The status dot turns
-                green and your input shows up in the <strong>Live</strong> panel (top-right) from any
-                screen.
+                <code>BBC micro:bit [·····]</code> that matches your five letters. The board shows a
+                checkmark, the status dot turns green, and your input appears in the <strong>Live</strong>
+                panel (top-right) from any screen.
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-5-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
+                <div class="shot-ph" data-file="assets/setup-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
               </figure>
             </div>
           </li>
