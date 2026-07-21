@@ -69,8 +69,8 @@ code {
   font-weight: 700; font-size: 1.02rem; color: var(--ink);
   text-decoration: none; letter-spacing: -.01em;
 }
-.mark { width: 20px; height: 20px; display: block; flex: none; }
-.mark svg { width: 20px; height: 20px; display: block; }
+.mark { width: 24px; height: 24px; display: block; flex: none; }
+.mark svg { width: 24px; height: 24px; display: block; }
 
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .conn { display: flex; align-items: center; gap: 9px; }
@@ -182,12 +182,8 @@ code {
 main { padding-block: 12px 64px; }
 
 .home-hero { text-align: center; max-width: 660px; margin: 0 auto; padding-top: 56px; }
-.home-mark { display: flex; justify-content: center; gap: 6px; margin-bottom: 22px; }
-.home-mark span { width: 14px; height: 14px; border-radius: 5px; }
-.home-mark span:nth-child(1) { background: var(--blue); }
-.home-mark span:nth-child(2) { background: var(--green); }
-.home-mark span:nth-child(3) { background: var(--yellow); }
-.home-mark span:nth-child(4) { background: var(--red); }
+/* Same diamond geometry as the navbar .mark and favicon, just scaled up */
+.home-mark { display: block; width: 60px; height: 60px; margin: 0 auto 22px; }
 
 .eyebrow {
   font-weight: 600; font-size: .78rem; letter-spacing: .08em;
