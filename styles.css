@@ -368,18 +368,19 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .pager-next { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pager-next:hover { background: var(--accent); filter: brightness(1.06); }
 
-/* ---------- Game frame ---------- */
-.screen-frame {
-  position: relative; display: inline-block; max-width: 100%;
-  padding: 12px; border-radius: var(--radius);
-  background: var(--bg); border: 1px solid var(--line); box-shadow: var(--shadow);
+/* ---------- Game placeholder ---------- */
+.game-placeholder {
+  display: grid; place-items: center; gap: 12px; text-align: center;
+  aspect-ratio: 3 / 2; width: 100%; max-width: 480px; padding: 32px;
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink-faint);
 }
-#game-canvas { display: block; max-width: 100%; border-radius: 8px; }
-.screen-badge {
-  position: absolute; left: 22px; bottom: 22px;
-  font-size: .74rem; font-weight: 600;
+.game-placeholder p { margin: 0; font-size: .95rem; }
+.game-placeholder-badge {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
   background: var(--green-soft); color: var(--green-ink);
-  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); padding: 4px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+  padding: 4px 12px; border-radius: 999px;
 }
 
 /* ---------- Footer ---------- */

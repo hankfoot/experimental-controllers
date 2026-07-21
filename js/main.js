@@ -3,7 +3,6 @@
 import { onStatus, onInput } from './bus.js';
 import { connect, disconnect, isSupported } from './bluetooth.js';
 import { initVisualizer } from './visualizer.js';
-import { initGame } from './game.js';
 import { initDemo } from './demo.js';
 import { renderSensors } from './sensors.js';
 import { initTabs } from './tabs.js';
@@ -16,7 +15,6 @@ renderSensors(document.getElementById('sensor-grid'));
 
 // --- Consumers -------------------------------------------------------------
 initVisualizer();
-initGame();
 initDemo();
 
 // --- Browser support banner ------------------------------------------------
