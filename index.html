@@ -10,16 +10,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <!-- Diamond mark: X top (blue) · A right (red) · B bottom (yellow) · Y left (green) —
-       identical geometry (viewBox 0 0 40 40, circles at 20,7 / 33,20 / 20,33 / 7,20, r=7.5)
-       reused for the favicon, navbar mark, and home hero mark so they match exactly. -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><circle cx='20' cy='7' r='7.5' fill='%232f6bff'/><circle cx='33' cy='20' r='7.5' fill='%23e5484d'/><circle cx='20' cy='33' r='7.5' fill='%23f4b400'/><circle cx='7' cy='20' r='7.5' fill='%2334b24a'/></svg>" />
+       identical geometry reused for the favicon, navbar mark, and home hero mark so they match.
+       viewBox is padded (-3 -3 46 46) so the circles (which reach -0.5..40.5) aren't clipped. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 46 46'><circle cx='20' cy='7' r='7.5' fill='%232f6bff'/><circle cx='33' cy='20' r='7.5' fill='%23e5484d'/><circle cx='20' cy='33' r='7.5' fill='%23f4b400'/><circle cx='7' cy='20' r='7.5' fill='%2334b24a'/></svg>" />
 </head>
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
       <a class="wordmark" href="#home">
         <span class="mark" aria-hidden="true">
-          <svg viewBox="0 0 40 40"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
+          <svg viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
         </span>
         Experimental Controllers
       </a>
@@ -99,7 +99,7 @@
     <!-- SCREEN: Home -->
     <div class="panel screen" role="tabpanel" id="panel-home" aria-labelledby="tab-home">
       <section class="home-hero">
-        <svg class="home-mark" aria-hidden="true" viewBox="0 0 40 40"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
+        <svg class="home-mark" aria-hidden="true" viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
         <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
         <h1>Turn Anything into a Game Controller</h1>
         <p class="byline">
