@@ -8,24 +8,33 @@ for a browser game of Flappy Bird.
 
 ## How it works
 
-1. Flash one of the sensor starter projects to your micro:bit (MakeCode).
-2. Open this site in **Chrome or Edge** (Web Bluetooth isn't supported in Safari/Firefox).
-3. Click **Connect** and pair your micro:bit.
-4. Watch your inputs in the visualizer — then play.
+1. On the **Controller** page, check the inputs you want; the site generates the MakeCode for you.
+2. Paste that code into the ready-made MakeCode project (see the **Setup** page) and flash it to your micro:bit.
+3. Open this site in **Chrome or Edge** (Web Bluetooth isn't supported in Safari/Firefox).
+4. Click **Connect** and pair your micro:bit.
+5. Watch your inputs in the visualizer — then play.
 
 ## Input protocol
 
-Every sensor speaks the same simple text protocol over the micro:bit UART service. One message
-per line:
+The micro:bit streams **raw sensor channels** over its UART service — one reading per line, as
+plain text:
 
-| Message | Meaning |
+```
+<channel>:<number>
+```
+
+| Example line | Meaning |
 | --- | --- |
-| `trigger` | A momentary event fired once (shake, clap, click). Drives the flap/jump. |
-| `state:true` / `state:false` | A held on/off state (button down, object touched). |
-| `value:0.42` | A continuous reading normalized to `0.0`–`1.0` (tilt, light, loudness). |
+| `btna:1` / `btna:0` | A binary input (button, touch pin, switch) — `1` while active, `0` otherwise. |
+| `light:187` | A continuous reading sent as its **raw value** (light/sound `0`–`255`, pins `0`–`1023`, tilt in degrees, heading `0`–`360`). |
+| `pitch:-42` | The board's live pitch angle in degrees. |
+| `shake:1` | A one-off gesture — sends a single `1` the instant it fires. |
 
-Because the browser only knows these three abstract types, the same visualizer and game work with
-*any* sensor you build.
+All meaning lives **in the browser**, not the micro:bit: what a channel triggers or steers is
+decided browser-side, so remapping never means reflashing. **Any channel name is valid on the
+wire** — the visualizer renders unknown channels with an auto-scaled plot, so you can invent your
+own in MakeCode. `js/channels.js` is just a prettiness registry (label, emoji, range hint) for the
+known ones.
 
 ## Local preview
 
@@ -39,11 +48,22 @@ python -m http.server 8000
 
 then open `http://localhost:8000/`.
 
-## Sensor starter code
+## Controller code builder
 
-<!-- MakeCode project links added as each starter is built -->
+There are no separate per-sensor starter projects. Instead the **Controller** page is a code
+builder: check the inputs you want and it live-generates the complete MakeCode JavaScript to paste
+into the ready-made project (see the **Setup** page), plus per-input wiring and build tips.
 
-- Accelerometer / gestures — _coming soon_
-- Buttons + touch pins — _coming soon_
-- Light + temperature — _coming soon_
-- Sound / microphone — _coming soon_
+Inputs are grouped into sections you can mix and match:
+
+- **Touch & press** — buttons, the gold logo, and pins P0–P2 (each pin picks *touch pad* or
+  *switch* mode).
+- **Tilt & direction** — live tilt (pitch/roll) and compass heading.
+- **Gestures** — one-off moves (shake, tilt-left/right, face-up/down, free fall, bump/hit/slam).
+  These fire only when they happen, so they add nothing to the Bluetooth load.
+- **Ambient sensing** — light, temperature, and microphone loudness.
+
+The generated code polls every 100 ms and writes each reading with `bluetooth.uartWriteLine`,
+guarded by a `connected` flag. It's written block-style (if/else, no ternaries) so MakeCode can
+decompile it back to Blocks view. Because the live inputs stream continuously, the builder shows a
+warning when too many are checked at once — lean on the free gestures where you can.
