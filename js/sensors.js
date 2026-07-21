@@ -54,7 +54,7 @@ export function renderSensors(container) {
   for (const s of SENSORS) {
     const ready = !!s.url;
     const el = document.createElement(ready ? 'a' : 'div');
-    el.className = 'sensor-card';
+    el.className = 'patch';
     el.dataset.ready = String(ready);
     if (ready) {
       el.href = s.url;
@@ -62,16 +62,14 @@ export function renderSensors(container) {
       el.rel = 'noopener';
     }
 
-    const tags = s.types
-      .map((t) => `<span class="type-tag">${t}</span>`)
-      .join('');
+    const pins = s.types.map((t) => `<span class="pin">${t}</span>`).join('');
 
     el.innerHTML = `
-      <span class="emoji">${s.emoji}</span>
+      <span class="patch-icon">${s.emoji}</span>
       <h3>${s.name}</h3>
       <p>${s.desc}</p>
       ${ready
-        ? `<div class="types">${tags}</div>`
+        ? `<div class="pins">${pins}</div>`
         : `<span class="soon">Starter coming soon</span>`}
     `;
     container.appendChild(el);

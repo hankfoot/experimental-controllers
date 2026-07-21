@@ -45,8 +45,28 @@ export function initVisualizer() {
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
 
-  const accent = () =>
-    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6d4aff';
+  const phosphor = () =>
+    getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#57ffa6';
+
+  function drawGraticule(w, h, c) {
+    ctx.save();
+    ctx.strokeStyle = c + '18'; // faint green graticule
+    ctx.lineWidth = 1;
+    const cols = 10, rows = 4;
+    for (let i = 1; i < cols; i++) {
+      const x = Math.round((i / cols) * w) + 0.5;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let j = 1; j < rows; j++) {
+      const y = Math.round((j / rows) * h) + 0.5;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    // brighter center axes
+    ctx.strokeStyle = c + '33';
+    ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w / 2 + 0.5, 0); ctx.lineTo(w / 2 + 0.5, h); ctx.stroke();
+    ctx.restore();
+  }
 
   function frame(now) {
     // Turn the trigger light off once its flash window elapses.
@@ -60,34 +80,49 @@ export function initVisualizer() {
 
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
+    const c = phosphor();
     ctx.clearRect(0, 0, w, h);
 
-    // Baseline grid line at the midpoint.
-    ctx.strokeStyle = 'rgba(128,128,128,.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(w, h / 2);
-    ctx.stroke();
+    drawGraticule(w, h, c);
 
-    // The value trace (0 at bottom, 1 at top), with a soft fill underneath.
+    // Build the trace path (0 at bottom, 1 at top).
     const stepX = w / (HISTORY - 1);
-    const c = accent();
+    const pad = 6;
     ctx.beginPath();
     for (let i = 0; i < HISTORY; i++) {
       const x = i * stepX;
-      const y = h - history[i] * (h - 8) - 4;
+      const y = h - history[i] * (h - pad * 2) - pad;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+
+    // Soft fill under the trace.
+    ctx.save();
+    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+    ctx.fillStyle = c + '14';
+    ctx.fill();
+    ctx.restore();
+
+    // Glowing phosphor trace (redraw path — fill mutated it).
+    ctx.beginPath();
+    for (let i = 0; i < HISTORY; i++) {
+      const x = i * stepX;
+      const y = h - history[i] * (h - pad * 2) - pad;
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.strokeStyle = c;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.shadowColor = c;
+    ctx.shadowBlur = 8;
     ctx.stroke();
+    ctx.shadowBlur = 0;
 
-    ctx.lineTo(w, h);
-    ctx.lineTo(0, h);
-    ctx.closePath();
-    ctx.fillStyle = c + '22';
+    // Leading-edge dot.
+    const lastY = h - history[HISTORY - 1] * (h - pad * 2) - pad;
+    ctx.beginPath();
+    ctx.arc(w - 1, lastY, 2.6, 0, Math.PI * 2);
+    ctx.fillStyle = c;
     ctx.fill();
 
     requestAnimationFrame(frame);

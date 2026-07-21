@@ -29,29 +29,46 @@ export function initGame() {
     if (bird.y > H - bird.r) { bird.y = H - bird.r; bird.vy *= -0.35; }
     if (bird.y < bird.r) { bird.y = bird.r; bird.vy = 0; }
 
-    // Sky
+    // Night sky
     ctx.clearRect(0, 0, W, H);
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#0a1526');
+    sky.addColorStop(1, '#12233a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
 
-    // Ground strip
-    ctx.fillStyle = '#8bd07a';
+    // Static starfield (deterministic — no RNG in the draw loop)
+    ctx.fillStyle = 'rgba(220,239,228,.5)';
+    for (let i = 0; i < 26; i++) {
+      const sx = (i * 97) % W;
+      const sy = (i * 53) % (H - 60);
+      ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+
+    // Ground with a phosphor edge
+    ctx.fillStyle = '#0c1310';
     ctx.fillRect(0, H - 22, W, 22);
-    ctx.fillStyle = '#79c268';
-    ctx.fillRect(0, H - 22, W, 5);
+    ctx.fillStyle = '#57ffa6';
+    ctx.fillRect(0, H - 22, W, 2);
 
-    // Bird
+    // Bird — amber with a soft glow
+    ctx.save();
+    ctx.shadowColor = '#ffb43d';
+    ctx.shadowBlur = 14;
     ctx.beginPath();
     ctx.arc(bird.x, bird.y, bird.r, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffd23f';
+    ctx.fillStyle = '#ffcf5c';
     ctx.fill();
-    ctx.strokeStyle = '#e0a800';
+    ctx.restore();
+    ctx.strokeStyle = '#e0952a';
     ctx.lineWidth = 2;
     ctx.stroke();
     // eye + beak
-    ctx.fillStyle = '#1c1b29';
+    ctx.fillStyle = '#0a0f0d';
     ctx.beginPath();
     ctx.arc(bird.x + 5, bird.y - 4, 2.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ef8a17';
+    ctx.fillStyle = '#ff7a2f';
     ctx.beginPath();
     ctx.moveTo(bird.x + bird.r - 2, bird.y - 2);
     ctx.lineTo(bird.x + bird.r + 7, bird.y);
@@ -60,10 +77,10 @@ export function initGame() {
     ctx.fill();
 
     // Hint text
-    ctx.fillStyle = 'rgba(28,27,41,.5)';
-    ctx.font = '13px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(87,255,166,.7)';
+    ctx.font = '12px "Space Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('trigger → flap', W / 2, 26);
+    ctx.fillText('trigger → flap', W / 2, 28);
 
     requestAnimationFrame(loop);
   }
