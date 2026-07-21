@@ -206,7 +206,7 @@ basic.forever(function () {
           <li class="step">
             <span class="step-num">4</span>
             <div class="step-body">
-              <h3>Flash it to your micro:bit</h3>
+              <h3>Flash code to your micro:bit</h3>
               <p>
                 Your micro:bit must be plugged into your computer to receive new code. Plug the micro:bit in over USB, then click <strong>Download</strong> in the bottom right of the MakeCode editor. If this is your first time downloading, follow the pop-up instructions to pair your board to your browser.
               </p>
@@ -227,7 +227,7 @@ basic.forever(function () {
               <h3>Find your micro:bit's name</h3>
               <p>
                 Every micro:bit has a unique five-letter Bluetooth name and shows up as
-                <code>BBC micro:bit [zuzet]</code> (five letters of its own). Your board is now scrolling
+                <code>BBC micro:bit [·····]</code> (five letters of its own). Your board is now scrolling
                 that five-letter code across the LEDs — note yours so you can spot it in a room full of
                 boards.
               </p>
@@ -240,15 +240,19 @@ basic.forever(function () {
           <li class="step">
             <span class="step-num">6</span>
             <div class="step-body">
-              <h3>Connect</h3>
+              <h3>Pair your micro:bit via Bluetooth</h3>
               <p>
-                Click <strong>Connect</strong> in the top bar. In the browser's Bluetooth list, pick the
-                <code>BBC micro:bit [·····]</code> that matches your five letters. The board shows a
-                checkmark, the status dot turns green, and your input appears in the <strong>Live</strong>
-                panel (top-right) from any screen.
+                Click <strong>Connect</strong> in the top bar of this page. In the browser's Bluetooth list, pick the
+                <code>BBC micro:bit [·····]</code> that matches your five letters. The board will display a
+                checkmark, the status dot will turn green, and any inputs you've configured will appear on the <strong>Live</strong>
+                visualizer.
+              </p>
+              <br/>
+              <p>
+                <strong>FYI - if you refresh this page, you'll need to re-pair.</strong>
               </p>
               <figure class="shot">
-                <div class="shot-ph" data-file="assets/setup-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
+                <img src="assets/setup-chooser.png" alt="The browser's Bluetooth chooser listing BBC micro:bit devices" />
               </figure>
             </div>
           </li>
