@@ -1,18 +1,18 @@
 // Shared input bus.
 //
-// Everything that PRODUCES input (the real micro:bit over Bluetooth, or Demo mode)
-// calls emitInput(). Everything that CONSUMES input (visualizer, game) listens with
-// onInput(). This keeps the browser side fully sensor-agnostic: consumers never care
-// whether a message came from real hardware or a demo button.
+// Everything that PRODUCES input (the real micro:bit over Bluetooth, or the test
+// controls) calls emitInput(). Everything that CONSUMES input (visualizer, game)
+// listens with onInput(). Consumers never care whether a message came from real
+// hardware or a demo button.
 
 const bus = new EventTarget();
 
 /**
- * A parsed input message. `type` is one of the three protocol types:
- *   { type: 'trigger', value: null }
- *   { type: 'state',   value: true | false }
- *   { type: 'value',   value: 0.0 .. 1.0 }
- * @typedef {{ type: 'trigger'|'state'|'value', value: (null|boolean|number), raw?: string }} InputMsg
+ * A parsed input message — one reading from one channel.
+ * The wire protocol is "<channel>:<number>\n"; channels are raw sensor streams
+ * (btna, light, pitch, p0, shake, …) with raw values. See js/channels.js for
+ * known-channel metadata; unknown channel names are perfectly valid.
+ * @typedef {{ channel: string, value: number, raw?: string }} InputMsg
  */
 
 /** Broadcast an input message to every consumer. @param {InputMsg} msg */

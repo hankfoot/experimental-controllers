@@ -85,24 +85,15 @@ function onNotify(event) {
 }
 
 /**
- * Parse one protocol line into a message and push it onto the bus.
- * Unknown lines are ignored so a noisy starter can't crash the page.
+ * Parse one protocol line ("<channel>:<number>") into a message and push it
+ * onto the bus. Any channel name is valid; malformed lines are ignored so a
+ * noisy starter can't crash the page.
  */
 export function parseLine(raw) {
-  let msg = null;
-
-  if (raw === 'trigger') {
-    msg = { type: 'trigger', value: null };
-  } else if (raw.startsWith('state:')) {
-    msg = { type: 'state', value: raw.slice(6).trim() === 'true' };
-  } else if (raw.startsWith('value:')) {
-    const n = parseFloat(raw.slice(6));
-    if (Number.isNaN(n)) return;
-    msg = { type: 'value', value: Math.min(1, Math.max(0, n)) }; // clamp to 0..1
-  } else {
-    return; // not part of the protocol — ignore
-  }
-
-  msg.raw = raw;
-  emitInput(msg);
+  const sep = raw.indexOf(':');
+  if (sep <= 0) return; // no channel name — not part of the protocol
+  const channel = raw.slice(0, sep).trim().toLowerCase();
+  const value = parseFloat(raw.slice(sep + 1));
+  if (!channel || Number.isNaN(value)) return;
+  emitInput({ channel, value, raw });
 }

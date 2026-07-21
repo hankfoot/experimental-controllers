@@ -59,31 +59,18 @@
       <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
 
-    <div class="live">
-      <div class="live-card">
-        <span class="live-label"><code>trigger</code></span>
-        <div id="trigger-light" class="pop"></div>
-        <span class="live-meta">Fired <strong id="trigger-count">0</strong></span>
-      </div>
-      <div class="live-card">
-        <span class="live-label"><code>state</code></span>
-        <div id="state-pill" class="toggle" data-on="false">false</div>
-        <span class="live-meta">Held on / off</span>
-      </div>
-      <div class="live-card live-wide">
-        <span class="live-label"><code>value</code><span id="value-readout" class="readnum">0.00</span></span>
-        <div class="plot"><canvas id="value-canvas" width="600" height="130"></canvas></div>
-      </div>
+    <div class="live-rows" id="live-rows">
+      <p class="live-empty">No input yet — every channel your controller sends will get a row here.</p>
     </div>
 
     <div class="send">
       <span class="send-label">Send test input <span class="send-sub">— no micro:bit needed</span></span>
       <div class="send-controls">
-        <button id="demo-trigger" class="btn btn-soft">Send <code>trigger</code></button>
-        <button id="demo-state" class="btn btn-soft" data-on="false">Toggle <code>state</code></button>
+        <button id="demo-a" class="btn btn-soft" data-on="false">Hold <code>btna</code></button>
+        <button id="demo-shake" class="btn btn-soft">Send <code>shake</code></button>
         <label class="demo-value">
-          <code>value</code>
-          <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
+          <code>light</code>
+          <input id="demo-light" type="range" min="0" max="255" step="1" value="0" />
         </label>
       </div>
     </div>
@@ -126,7 +113,7 @@
         <button class="home-card home-card--yellow" data-tab-target="starters">
           <span class="home-card-num">2</span>
           <h3>Starters</h3>
-          <p>Pick a sensor and flash the example code for it.</p>
+          <p>Design your controller and generate its code.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
         <button class="home-card home-card--green" data-tab-target="game">
@@ -282,35 +269,60 @@ basic.forever(function () {
 
     <!-- SCREEN: Starters -->
     <div class="panel screen" role="tabpanel" id="panel-starters" aria-labelledby="tab-starters" hidden>
-      <section class="block" id="sensors">
-        <div class="block-head"><h2>Sensor starters</h2></div>
+      <section class="block" id="builder">
+        <div class="block-head"><h2>Design your controller</h2></div>
         <p class="lead">
-          Each starter reads one kind of micro:bit input and sends it with the protocol below. Open
-          one in MakeCode, tweak it for your object, and flash it (see the Set&nbsp;up screen).
+          Check the inputs your controller will use — pins also pick <em>how</em> they're wired.
+          The code and build steps below update as you go.
         </p>
-        <div class="tiles" id="sensor-grid"><!-- populated by js/sensors.js --></div>
+        <div class="tiles" id="builder-grid"><!-- populated by js/builder.js --></div>
+      </section>
+
+      <section class="block" id="builder-code-section">
+        <div class="block-head"><h2>Your code</h2></div>
+        <p class="lead">
+          Paste this over everything in the <strong>JavaScript</strong> tab of your MakeCode
+          project (Set&nbsp;up, step&nbsp;3), then flash it. You can also switch back to Blocks
+          view to see and tweak it visually.
+        </p>
+        <div class="code-block code-block-wide">
+          <button class="code-copy" type="button">Copy</button>
+          <pre><code id="builder-code"></code></pre>
+        </div>
+      </section>
+
+      <section class="block" id="builder-steps-section">
+        <div class="block-head"><h2>Build it</h2></div>
+        <div id="builder-steps"><!-- populated by js/builder.js --></div>
       </section>
 
       <section class="block" id="protocol">
         <div class="block-head"><h2>The protocol</h2></div>
         <p class="lead">
-          Three kinds of message, one per line. The page only knows these three, so the same
-          visualizer and game work with any sensor you make.
+          Every reading your micro:bit sends is one line of text: a channel name, a colon, a
+          number. That's the whole protocol — the page doesn't know anything about specific
+          sensors, so any channel you send shows up in the <strong>Live</strong> panel.
         </p>
         <div class="cards">
           <div class="card">
-            <code class="msg">trigger</code>
-            <p>A one-off event — a shake, a clap, a click. This is what makes the game jump.</p>
+            <code class="msg">channel:number</code>
+            <p>The one message shape. Even channel names you invent yourself will appear live.</p>
           </div>
           <div class="card">
-            <code class="msg">state:true</code>
-            <p>A held switch — a button pressed down, or an object being touched.</p>
+            <code class="msg">btna:1 &nbsp; light:187</code>
+            <p>Buttons and touch send <code>1</code>/<code>0</code>; sensors send their raw
+               reading (light 0–255, pins 0–1023, tilt in degrees).</p>
           </div>
           <div class="card">
-            <code class="msg">value:0.42</code>
-            <p>A number from <code>0</code> to <code>1</code> — tilt, brightness, loudness.</p>
+            <code class="msg">shake:1</code>
+            <p>One-off events send a <code>1</code> the moment they happen.</p>
           </div>
         </div>
+        <p class="note">
+          <strong>Where does "flap" come from?</strong> Nowhere on the micro:bit! Mapping channels
+          to game actions (flap on shake, steer with tilt…) happens in the browser, on the
+          <strong>Game</strong> screen — so you can remap instantly without reflashing.
+        </p>
       </section>
 
       <nav class="pager">

@@ -4,14 +4,18 @@ import { onStatus, onInput } from './bus.js';
 import { connect, disconnect, isSupported } from './bluetooth.js';
 import { initVisualizer } from './visualizer.js';
 import { initDemo } from './demo.js';
-import { renderSensors } from './sensors.js';
+import { initBuilder } from './builder.js';
 import { initTabs } from './tabs.js';
 
 // --- Tabs ------------------------------------------------------------------
 initTabs();
 
-// --- Sensor grid -----------------------------------------------------------
-renderSensors(document.getElementById('sensor-grid'));
+// --- Controller code builder ------------------------------------------------
+initBuilder({
+  grid: document.getElementById('builder-grid'),
+  codeEl: document.getElementById('builder-code'),
+  stepsEl: document.getElementById('builder-steps'),
+});
 
 // --- Consumers -------------------------------------------------------------
 initVisualizer();
