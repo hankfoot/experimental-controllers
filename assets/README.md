@@ -5,6 +5,7 @@ placeholder box on the page for the real image:
 
 | File | What it shows |
 | --- | --- |
+| `setup-microbit.png` | A micro:bit v2 board |
 | `setup-project.png` | The starter project open in MakeCode (micro:bit simulator visible) |
 | `setup-flash.png` | Downloading / dragging the `.hex` onto the MICROBIT drive |
 | `setup-name.png` | The five-letter name scrolling across the micro:bit LEDs |

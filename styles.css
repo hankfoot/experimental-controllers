@@ -250,14 +250,14 @@ em { color: var(--accent); font-style: italic; }
   background: var(--bg-soft);
   border: 1px dashed color-mix(in srgb, var(--ink) 18%, var(--line));
   border-radius: 10px;
-  color: var(--ink-soft); font-size: .84rem; max-width: 460px;
+  color: var(--ink-soft); font-size: .84rem; max-width: 620px;
 }
 .shot-ph::before { content: "🖼"; font-size: 1.3rem; filter: grayscale(1) opacity(.6); }
 .shot-ph::after {
   content: "add " attr(data-file);
   font-family: var(--mono); font-size: .7rem; color: var(--ink-faint);
 }
-.shot img { display: block; max-width: 460px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
+.shot img { display: block; max-width: 620px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
 
 /* Copy-paste code block */
 .code-block { position: relative; margin-top: 6px; max-width: 560px; }
