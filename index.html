@@ -26,21 +26,18 @@
 
       <nav class="menu" role="tablist" aria-label="Sections">
         <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
-        <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Set&nbsp;up</button>
-        <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Starters</button>
+        <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Setup</button>
+        <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Sensors</button>
         <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
       </nav>
 
       <div class="topbar-right">
-        <!-- Persistent live-signal chip; opens the full visualizer popover -->
-        <button class="signal" id="signal-toggle" aria-expanded="false" aria-controls="viz-pop" title="Live input">
+        <!-- Opens the full per-channel visualizer popover. Just a button + a generic
+             activity dot (green when connected, pulses while data flows) — it renders no
+             channel data itself, so many simultaneous streams can't make it glitch. -->
+        <button class="signal" id="signal-toggle" aria-expanded="false" aria-controls="viz-pop" title="Live input" data-connected="false" data-active="false">
+          <span class="sig-dot" id="sig-activity" aria-hidden="true"></span>
           <span class="sig-label">Live</span>
-          <span class="sig-live">
-            <span id="mini-trigger" class="sig-dot" aria-hidden="true"></span>
-            <span id="mini-state" class="sig-dot sig-state" data-on="false" aria-hidden="true"></span>
-            <canvas id="mini-canvas" class="sig-spark" width="120" height="34" aria-hidden="true"></canvas>
-            <span id="mini-value" class="sig-num">0.00</span>
-          </span>
         </button>
 
         <div class="conn" role="status">
@@ -106,13 +103,13 @@
       <div class="home-cards">
         <button class="home-card home-card--red" data-tab-target="setup">
           <span class="home-card-num">1</span>
-          <h3>Set up</h3>
+          <h3>Setup</h3>
           <p>Get your micro:bit talking to the browser over Bluetooth.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
         <button class="home-card home-card--yellow" data-tab-target="starters">
           <span class="home-card-num">2</span>
-          <h3>Starters</h3>
+          <h3>Sensors</h3>
           <p>Design your controller and generate its code.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
@@ -263,14 +260,14 @@ basic.forever(function () {
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="home"><span aria-hidden="true">&larr;</span> Home</button>
-        <button class="pager-btn pager-next" data-tab-target="starters">Starters <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="starters">Sensors <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
     <!-- SCREEN: Starters -->
     <div class="panel screen" role="tabpanel" id="panel-starters" aria-labelledby="tab-starters" hidden>
       <section class="block" id="builder">
-        <div class="block-head"><h2>Design your controller</h2></div>
+        <div class="block-head"><span class="step-num">1</span><h2>Design your controller</h2></div>
         <p class="lead">
           Check the inputs your controller will use — pins also pick <em>how</em> they're wired.
           The code and build steps below update as you go.
@@ -280,10 +277,10 @@ basic.forever(function () {
       </section>
 
       <section class="block" id="builder-code-section">
-        <div class="block-head"><h2>Your code</h2></div>
+        <div class="block-head"><span class="step-num">2</span><h2>Your code</h2></div>
         <p class="lead">
           Paste this over everything in the <strong>JavaScript</strong> tab of your MakeCode
-          project (Set&nbsp;up, step&nbsp;3), then flash it. You can also switch back to Blocks
+          project (Setup, step&nbsp;3), then flash it. You can also switch back to Blocks
           view to see and tweak it visually.
         </p>
         <div class="code-block code-block-wide">
@@ -293,12 +290,12 @@ basic.forever(function () {
       </section>
 
       <section class="block" id="builder-steps-section">
-        <div class="block-head"><h2>Build it</h2></div>
+        <div class="block-head"><span class="step-num">3</span><h2>Build it</h2></div>
         <div id="builder-steps"><!-- populated by js/builder.js --></div>
       </section>
 
       <section class="block" id="protocol">
-        <div class="block-head"><h2>The protocol</h2></div>
+        <div class="block-head"><span class="step-num">4</span><h2>The protocol</h2></div>
         <p class="lead">
           Every reading your micro:bit sends is one line of text: a channel name, a colon, a
           number. That's the whole protocol — the page doesn't know anything about specific
@@ -327,7 +324,7 @@ basic.forever(function () {
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Set up</button>
+        <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Setup</button>
         <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
@@ -348,7 +345,7 @@ basic.forever(function () {
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="starters"><span aria-hidden="true">&larr;</span> Starters</button>
+        <button class="pager-btn" data-tab-target="starters"><span aria-hidden="true">&larr;</span> Sensors</button>
         <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
       </nav>
     </div>

@@ -366,7 +366,7 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl }) {
         <ul class="build-list">${notes.join('')}</ul>
         <ol class="build-final">
           <li>Copy the code above and paste it over <em>everything</em> in the JavaScript tab of
-              your MakeCode project, then <strong>Download</strong> to flash (see Set&nbsp;up).</li>
+              your MakeCode project, then <strong>Download</strong> to flash (see Setup).</li>
           <li>Click <strong>Connect</strong> in the top bar, then open the <strong>Live</strong>
               panel and check every input responds before building around it.</li>
         </ol>

@@ -6,9 +6,9 @@
 // Plots scale using the registry's range hint when there is one, expanding to
 // whatever values actually arrive (so unknown channels auto-scale).
 //
-// It also drives the compact "Live" chip in the navbar: flash dot (events),
-// state dot (any binary channel on), and a sparkline of the most recently
-// active numeric channel. Either set of elements may be absent; all guarded.
+// This lives only inside the popover. The navbar chip is a plain button with a
+// generic activity pulse (see main.js) — it renders NO per-channel data, so
+// multiple simultaneous streams can't make it thrash.
 
 import { onInput } from './bus.js';
 import { channelInfo } from './channels.js';
@@ -20,16 +20,9 @@ export function initVisualizer() {
 
   const rowsHost = el('live-rows');
   const emptyMsg = rowsHost?.querySelector('.live-empty');
-  const miniFlash = el('mini-trigger');
-  const miniState = el('mini-state');
-  const miniNum = el('mini-value');
-  const miniCanvas = el('mini-canvas');
-  const miniCtx = miniCanvas?.getContext('2d');
 
   /** @type {Map<string, object>} channel name -> row state */
   const rows = new Map();
-  let miniFlashUntil = 0;
-  let lastNumberRow = null; // whose history the mini sparkline shows
 
   const fmt = (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
@@ -97,20 +90,15 @@ export function initVisualizer() {
     if (row.kind === 'event') {
       row.count++;
       row.flashUntil = performance.now() + 150;
-      miniFlashUntil = row.flashUntil;
       row.vizEl?.querySelector('.chan-flash')?.classList.add('flash');
       row.vizEl?.querySelector('.chan-count b')?.replaceChildren(String(row.count));
-      miniFlash?.classList.add('flash');
     } else if (row.kind === 'binary') {
       const pill = row.vizEl?.querySelector('.chan-pill');
       if (pill) { pill.dataset.on = String(value === 1); pill.textContent = String(value); }
     } else {
       if (value < row.min) row.min = value;
       if (value > row.max) row.max = value;
-      const txt = fmt(value);
-      row.vizEl?.querySelector('.chan-num')?.replaceChildren(txt);
-      lastNumberRow = row;
-      if (miniNum) miniNum.textContent = txt;
+      row.vizEl?.querySelector('.chan-num')?.replaceChildren(fmt(value));
     }
   });
 
@@ -176,13 +164,6 @@ export function initVisualizer() {
       row.history.shift();
       if (row.canvas) drawTrace(row.canvas, row.ctx, row, color);
     }
-
-    if (now > miniFlashUntil) miniFlash?.classList.remove('flash');
-    if (miniState) {
-      const anyOn = [...rows.values()].some((r) => r.kind === 'binary' && r.current === 1);
-      miniState.dataset.on = String(anyOn);
-    }
-    if (miniCanvas && lastNumberRow) drawTrace(miniCanvas, miniCtx, lastNumberRow, color);
 
     requestAnimationFrame(frame);
   }

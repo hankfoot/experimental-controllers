@@ -48,16 +48,22 @@ if (!isSupported()) {
 const signalToggle = document.getElementById('signal-toggle');
 const vizPop = document.getElementById('viz-pop');
 const vizClose = document.getElementById('viz-close');
-const bannerDemoLink = document.getElementById('banner-demo-link');
 
 function openViz(open) {
   vizPop.hidden = !open;
   signalToggle.setAttribute('aria-expanded', String(open));
 }
 
-// Keep the chip compact until there's actually something live to show.
-function markLive() { signalToggle.classList.add('is-live'); }
-onInput(markLive);
+// The chip pulses while data is flowing (real or demo), then settles after a
+// short idle. Generic on/off — it never reflects any specific channel, so many
+// simultaneous streams can't make it thrash. `data-connected` (set below) colors
+// the dot green; `data-active` drives the pulse.
+let idleTimer = null;
+onInput(() => {
+  signalToggle.dataset.active = 'true';
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => { signalToggle.dataset.active = 'false'; }, 400);
+});
 
 signalToggle.addEventListener('click', () => openViz(vizPop.hidden));
 vizClose.addEventListener('click', () => openViz(false));
@@ -70,13 +76,6 @@ document.addEventListener('click', (e) => {
   openViz(false);
 });
 
-// The banner's "Live → Demo mode" link opens the popover; demo.js enables demo.
-bannerDemoLink?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation(); // don't let the outside-click handler immediately close it
-  openViz(true);
-});
-
 // --- Connection button + status --------------------------------------------
 const connectBtn = document.getElementById('connect-btn');
 const statusDot = document.getElementById('status-dot');
@@ -87,6 +86,7 @@ let connected = false;
 onStatus(({ state, message }) => {
   statusDot.dataset.state = state;
   connected = state === 'connected';
+  signalToggle.dataset.connected = String(connected); // greens the chip's activity dot
 
   if (state === 'connecting') {
     statusText.textContent = 'Connecting…';
@@ -96,7 +96,6 @@ onStatus(({ state, message }) => {
     statusText.textContent = message || 'Connected';
     connectBtn.disabled = false;
     connectBtn.textContent = 'Disconnect';
-    markLive();
   } else {
     statusText.textContent = 'Not connected';
     connectBtn.disabled = false;
