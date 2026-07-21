@@ -6,10 +6,14 @@
 
 import { emitInput, emitStatus } from './bus.js';
 
-// Nordic UART Service UUIDs (the micro:bit's Bluetooth UART service uses these).
+// Nordic UART Service UUIDs. NOTE: the micro:bit's UART profile assigns TX/RX
+// the OPPOSITE way to the common Nordic nRF example — the micro:bit *transmits*
+// on 6e400002 (notify → browser) and *receives* on 6e400003 (write). Subscribing
+// to 6e400003 for notifications (the nRF convention) connects fine but delivers
+// no data, which is the bug this fixes.
 const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-const UART_TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit -> browser (notifications)
-const UART_RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // browser -> micro:bit (write)
+const UART_TX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit -> browser (notifications)
+const UART_RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // browser -> micro:bit (write)
 
 let device = null;
 let rxChar = null;
