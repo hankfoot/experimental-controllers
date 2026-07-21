@@ -133,6 +133,39 @@ h1 {
 h2 { font-size: 1.4rem; letter-spacing: -.02em; font-weight: 700; margin: 0; }
 .lead { color: var(--ink-soft); margin: 0 0 22px; max-width: 62ch; }
 
+/* ---------- Setup steps ---------- */
+.steps { list-style: none; padding: 0; margin: 0; }
+.step { display: grid; grid-template-columns: 30px 1fr; gap: 16px; }
+.step-num {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  font-weight: 700; font-size: .9rem; display: grid; place-items: center;
+  margin-top: 1px;
+}
+.step-body { padding-bottom: 24px; }
+.step:not(:last-child) .step-body { border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.step-body h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
+.step-body p { margin: 0; color: var(--ink-soft); max-width: 60ch; }
+
+/* Screenshot placeholders (replace .shot-ph with <img> when images arrive) */
+.shot { margin: 14px 0 0; }
+.shot-ph {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 6px;
+  min-height: 148px; padding: 22px;
+  background: var(--bg-soft);
+  border: 1px dashed color-mix(in srgb, var(--ink) 18%, var(--line));
+  border-radius: 10px;
+  color: var(--ink-soft); font-size: .84rem; max-width: 460px;
+}
+.shot-ph::before { content: "🖼"; font-size: 1.3rem; filter: grayscale(1) opacity(.6); }
+.shot-ph::after {
+  content: "add " attr(data-file);
+  font-family: var(--mono); font-size: .7rem; color: var(--ink-faint);
+}
+.shot img { display: block; max-width: 460px; width: 100%; border: 1px solid var(--line); border-radius: 10px; }
+.shot figcaption { margin-top: 7px; font-size: .8rem; color: var(--ink-faint); }
+
 /* ---------- Cards (shared) ---------- */
 .card {
   background: var(--bg); border: 1px solid var(--line);

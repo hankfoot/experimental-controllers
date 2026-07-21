@@ -42,19 +42,122 @@
       <p class="flow">object &rarr; micro:bit &rarr; bluetooth &rarr; game</p>
     </section>
 
-    <!-- 1 — sensor starters -->
+    <!-- 1 — set up the micro:bit -->
+    <section class="block" id="setup">
+      <div class="block-head"><span class="num">1</span><h2>Set up your micro:bit</h2></div>
+      <p class="lead">
+        A one-time setup: add Bluetooth to your code in MakeCode, flash a starter, and find your
+        board's Bluetooth name so you can connect to it. About five minutes.
+      </p>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num">1</span>
+          <div class="step-body">
+            <h3>Grab a micro:bit v2</h3>
+            <p>
+              You'll need a <strong>micro:bit v2</strong> (the microphone and logo-touch inputs are
+              v2-only) and a USB cable. A battery pack is handy once you unplug from the computer.
+            </p>
+          </div>
+        </li>
+
+        <li class="step">
+          <span class="step-num">2</span>
+          <div class="step-body">
+            <h3>Open MakeCode and add Bluetooth</h3>
+            <p>
+              Go to <a href="https://makecode.microbit.org" target="_blank" rel="noopener">makecode.microbit.org</a>
+              and start a new project. Open <strong>Extensions</strong>, search for
+              <strong>Bluetooth</strong>, and add it. MakeCode will warn that this removes the Radio
+              blocks — that's expected; we don't use radio.
+            </p>
+            <figure class="shot">
+              <div class="shot-ph" data-file="assets/setup-2-extension.png">MakeCode Extensions — adding the “Bluetooth” extension</div>
+            </figure>
+          </div>
+        </li>
+
+        <li class="step">
+          <span class="step-num">3</span>
+          <div class="step-body">
+            <h3>Turn off pairing</h3>
+            <p>
+              Click the <strong>gear</strong> (top-right) → <strong>Project Settings</strong>. In the
+              Bluetooth section, choose <strong>“No Pairing Required: Anyone can connect via
+              Bluetooth.”</strong> This lets the browser connect straight away, without first pairing
+              the micro:bit in your computer's Bluetooth settings.
+            </p>
+            <figure class="shot">
+              <div class="shot-ph" data-file="assets/setup-3-pairing.png">Project Settings — Bluetooth pairing set to “No Pairing Required”</div>
+            </figure>
+          </div>
+        </li>
+
+        <li class="step">
+          <span class="step-num">4</span>
+          <div class="step-body">
+            <h3>Flash a starter</h3>
+            <p>
+              Pick a <a href="#sensors">sensor starter</a> below and open it in MakeCode. Plug the
+              micro:bit in over USB, click <strong>Download</strong>, and drag the downloaded
+              <code>.hex</code> onto the <strong>MICROBIT</strong> drive (or use MakeCode's
+              <em>Connect device</em> to flash directly). The yellow light blinks while it copies,
+              then stops when it's done.
+            </p>
+            <figure class="shot">
+              <div class="shot-ph" data-file="assets/setup-4-flash.png">Downloading and dragging the .hex onto the MICROBIT drive</div>
+            </figure>
+          </div>
+        </li>
+
+        <li class="step">
+          <span class="step-num">5</span>
+          <div class="step-body">
+            <h3>Find your micro:bit's name</h3>
+            <p>
+              Every micro:bit has a unique five-letter Bluetooth name and shows up as
+              <code>BBC micro:bit [zuzet]</code> (five letters of its own). When it powers on, the
+              starter scrolls that five-letter code across the LEDs — note yours so you can spot it in
+              a room full of boards.
+            </p>
+            <figure class="shot">
+              <div class="shot-ph" data-file="assets/setup-5-name.png">The five-letter name scrolling across the micro:bit LEDs</div>
+            </figure>
+          </div>
+        </li>
+
+        <li class="step">
+          <span class="step-num">6</span>
+          <div class="step-body">
+            <h3>Connect</h3>
+            <p>
+              Click <strong>Connect micro:bit</strong> at the top of this page. In the browser's
+              Bluetooth list, pick the <code>BBC micro:bit [·····]</code> that matches your five
+              letters. The status dot turns green and your inputs appear in
+              <a href="#visualizer">Watch it come in</a>.
+            </p>
+            <figure class="shot">
+              <div class="shot-ph" data-file="assets/setup-6-chooser.png">The browser's Bluetooth chooser listing “BBC micro:bit […]”</div>
+            </figure>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 2 — sensor starters -->
     <section class="block" id="sensors">
-      <div class="block-head"><span class="num">1</span><h2>Flash a sensor starter</h2></div>
+      <div class="block-head"><span class="num">2</span><h2>Sensor starters</h2></div>
       <p class="lead">
         Each starter reads one kind of micro:bit input and sends it with the protocol below. Open
-        one in MakeCode, tweak it for your object, and flash it to a micro:bit&nbsp;v2.
+        one in MakeCode, tweak it for your object, and flash it (see step 1).
       </p>
       <div class="tiles" id="sensor-grid"><!-- populated by js/sensors.js --></div>
     </section>
 
     <!-- protocol -->
     <section class="block" id="protocol">
-      <div class="block-head"><span class="num">2</span><h2>The protocol</h2></div>
+      <div class="block-head"><span class="num">3</span><h2>The protocol</h2></div>
       <p class="lead">
         Three kinds of message, one per line. The page only knows these three, so the same
         visualizer and game work with any sensor you make.
@@ -77,7 +180,7 @@
 
     <!-- 3 — live input -->
     <section class="block" id="visualizer">
-      <div class="block-head"><span class="num">3</span><h2>Watch it come in</h2></div>
+      <div class="block-head"><span class="num">4</span><h2>Watch it come in</h2></div>
       <p class="lead">
         Connect a micro:bit up top, or turn on
         <button id="demo-toggle" class="linkish">Demo mode</button> to try it without hardware.
@@ -114,7 +217,7 @@
 
     <!-- 4 — the game -->
     <section class="block" id="game">
-      <div class="block-head"><span class="num">4</span><h2>Play</h2></div>
+      <div class="block-head"><span class="num">5</span><h2>Play</h2></div>
       <p class="lead">
         The game reads the same messages. It's a placeholder for now — my collaborator is adding
         Flappy Bird here. The bird already flaps on <code>trigger</code>, so you can check your
