@@ -32,19 +32,19 @@
       </nav>
 
       <div class="topbar-right">
-        <!-- Opens the full per-channel visualizer popover. Just a button + a generic
-             activity dot (green when connected, pulses while data flows) — it renders no
-             channel data itself, so many simultaneous streams can't make it glitch. -->
-        <button class="signal" id="signal-toggle" aria-expanded="false" aria-controls="viz-pop" title="Live input" data-connected="false" data-active="false">
+        <!-- One control, two jobs: it shows connection status through its dot (grey idle,
+             yellow connecting, green + pulsing while data flows) AND opens the per-channel
+             visualizer popover. Its label reads "Live" until a board connects, then becomes
+             the device name (e.g. "BBC micro:bit [gapeg]") — so the board name itself is
+             the live-input button. The dot renders no channel data, so many simultaneous
+             streams can't make it glitch. -->
+        <button class="signal" id="signal-toggle" aria-controls="viz-pop" aria-expanded="false"
+                title="Live input" data-state="disconnected" data-active="false">
           <span class="sig-dot" id="sig-activity" aria-hidden="true"></span>
-          <span class="sig-label">Live</span>
+          <span class="sig-label" id="signal-label" role="status">Live</span>
         </button>
 
-        <div class="conn" role="status">
-          <span id="status-dot" class="dot" data-state="disconnected"></span>
-          <span id="status-text" class="conn-text">Not connected</span>
-          <button id="connect-btn" class="btn">Connect</button>
-        </div>
+        <button id="connect-btn" class="btn">Connect</button>
       </div>
     </div>
   </header>

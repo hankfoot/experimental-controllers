@@ -56,8 +56,8 @@ function openViz(open) {
 
 // The chip pulses while data is flowing (real or demo), then settles after a
 // short idle. Generic on/off — it never reflects any specific channel, so many
-// simultaneous streams can't make it thrash. `data-connected` (set below) colors
-// the dot green; `data-active` drives the pulse.
+// simultaneous streams can't make it thrash. `data-state` (set below) colors
+// the dot (grey / yellow / green); `data-active` drives the pulse.
 let idleTimer = null;
 onInput(() => {
   signalToggle.dataset.active = 'true';
@@ -77,27 +77,28 @@ document.addEventListener('click', (e) => {
 });
 
 // --- Connection button + status --------------------------------------------
+// The signal button doubles as the status display: its dot reflects the state,
+// and once connected its label becomes the device name — so the board name
+// itself is the live-input button. The Connect/Disconnect action stays separate.
 const connectBtn = document.getElementById('connect-btn');
-const statusDot = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
+const signalLabel = document.getElementById('signal-label');
 
 let connected = false;
 
 onStatus(({ state, message }) => {
-  statusDot.dataset.state = state;
   connected = state === 'connected';
-  signalToggle.dataset.connected = String(connected); // greens the chip's activity dot
+  signalToggle.dataset.state = state; // colors the dot: grey / yellow / green
 
   if (state === 'connecting') {
-    statusText.textContent = 'Connecting…';
+    signalLabel.textContent = 'Connecting…';
     connectBtn.disabled = true;
     connectBtn.textContent = 'Connecting…';
   } else if (state === 'connected') {
-    statusText.textContent = message || 'Connected';
+    signalLabel.textContent = message || 'Connected'; // e.g. "BBC micro:bit [gapeg]"
     connectBtn.disabled = false;
     connectBtn.textContent = 'Disconnect';
   } else {
-    statusText.textContent = 'Not connected';
+    signalLabel.textContent = 'Live';
     connectBtn.disabled = false;
     connectBtn.textContent = 'Connect';
   }
