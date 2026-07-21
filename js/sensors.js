@@ -3,6 +3,7 @@
 // When a MakeCode project is ready, fill in its `url` (share link from
 // makecode.microbit.org). Until then, leave url null and the card renders as a
 // "coming soon" placeholder. `types` lists which protocol messages it emits.
+// Tiles share the Starters screen's single accent color (yellow, in styles.css).
 
 export const SENSORS = [
   {
@@ -10,7 +11,6 @@ export const SENSORS = [
     name: 'Tilt & motion',
     desc: 'Accelerometer — tilt an object to steer, or shake it.',
     types: ['value', 'trigger'],
-    tone: 'blue',
     url: null,
   },
   {
@@ -18,7 +18,6 @@ export const SENSORS = [
     name: 'Buttons & touch',
     desc: 'A/B buttons and capacitive touch on pins 0/1/2.',
     types: ['trigger', 'state'],
-    tone: 'red',
     url: null,
   },
   {
@@ -26,7 +25,6 @@ export const SENSORS = [
     name: 'Light',
     desc: 'Onboard light sensor — cover it, shine on it.',
     types: ['value'],
-    tone: 'yellow',
     url: null,
   },
   {
@@ -34,7 +32,6 @@ export const SENSORS = [
     name: 'Temperature',
     desc: 'Warm the board with your hands.',
     types: ['value'],
-    tone: 'green',
     url: null,
   },
   {
@@ -42,7 +39,6 @@ export const SENSORS = [
     name: 'Sound (v2)',
     desc: 'Microphone loudness and clap detection.',
     types: ['value', 'trigger'],
-    tone: 'blue',
     url: null,
   },
   {
@@ -50,7 +46,6 @@ export const SENSORS = [
     name: 'Compass (v2)',
     desc: 'Magnetometer heading — spin an object to control.',
     types: ['value'],
-    tone: 'red',
     url: null,
   },
 ];
@@ -60,7 +55,7 @@ export function renderSensors(container) {
   for (const s of SENSORS) {
     const ready = !!s.url;
     const el = document.createElement(ready ? 'a' : 'div');
-    el.className = `tile tile--${s.tone}`;
+    el.className = 'tile';
     el.dataset.ready = String(ready);
     if (ready) {
       el.href = s.url;

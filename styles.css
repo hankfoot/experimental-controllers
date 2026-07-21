@@ -9,11 +9,12 @@
   --ink-faint: #a2a7b0;
   --line:      #e8e9ed;
 
-  /* Super Famicom face-button colors: X blue (top) · A red (right) · B yellow (bottom) · Y green (left) */
-  --red:    #d1483f;  --red-soft:    #fbeae8;  --red-ink:    #b83a32;
-  --yellow: #e4a530;  --yellow-soft: #fdf3e0;  --yellow-ink: #a1741f;
-  --green:  #4a9e78;  --green-soft:  #e9f4ee;  --green-ink:  #3c8264;
-  --blue:   #4d78c8;  --blue-soft:   #eaf0fa;  --blue-ink:   #3d63ab;
+  /* Super Famicom face-button colors, one assigned per screen: Home=blue, Set up=green,
+     Starters=yellow, Game=red. */
+  --red:    #e5484d;  --red-soft:    #fdecec;  --red-ink:    #d23a3f;
+  --yellow: #f4b400;  --yellow-soft: #fff6df;  --yellow-ink: #a5760f;
+  --green:  #34b24a;  --green-soft:  #e7f6ea;  --green-ink:  #2c9740;
+  --blue:   #2f6bff;  --blue-soft:   #eaf1ff;  --blue-ink:   #2a60e6;
 
   --accent: var(--blue);
   --accent-soft: var(--blue-soft);
@@ -167,6 +168,10 @@ code {
 .tab:hover { background: var(--bg-soft); color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* each screen gets its own accent: Home=blue (default above), Set up=green, Starters=yellow, Game=red */
+#tab-setup[aria-selected="true"]    { background: var(--green-soft);  color: var(--green-ink); }
+#tab-starters[aria-selected="true"] { background: var(--yellow-soft); color: var(--yellow-ink); }
+#tab-game[aria-selected="true"]     { background: var(--red-soft);    color: var(--red-ink); }
 
 .panel[hidden] { display: none; }
 .panel:not([hidden]) { animation: fade .28s ease both; }
@@ -177,16 +182,12 @@ code {
 main { padding-block: 12px 64px; }
 
 .home-hero { text-align: center; max-width: 660px; margin: 0 auto; padding-top: 56px; }
-/* Diamond layout matching the real SFC face buttons: X top / A right / B bottom / Y left */
-.home-mark {
-  position: relative; width: 54px; height: 54px;
-  margin: 0 auto 24px;
-}
-.home-mark span { position: absolute; width: 16px; height: 16px; border-radius: 50%; }
-.home-mark span:nth-child(1) { background: var(--blue);   top: 0;    left: 19px; }  /* X */
-.home-mark span:nth-child(2) { background: var(--red);    top: 19px; left: 38px; }  /* A */
-.home-mark span:nth-child(3) { background: var(--yellow); top: 38px; left: 19px; }  /* B */
-.home-mark span:nth-child(4) { background: var(--green);  top: 19px; left: 0;    }  /* Y */
+.home-mark { display: flex; justify-content: center; gap: 6px; margin-bottom: 22px; }
+.home-mark span { width: 14px; height: 14px; border-radius: 5px; }
+.home-mark span:nth-child(1) { background: var(--blue); }
+.home-mark span:nth-child(2) { background: var(--green); }
+.home-mark span:nth-child(3) { background: var(--yellow); }
+.home-mark span:nth-child(4) { background: var(--red); }
 
 .eyebrow {
   font-weight: 600; font-size: .78rem; letter-spacing: .08em;
@@ -219,10 +220,10 @@ h1 {
 .home-card h3 { margin: 6px 0 0; font-size: 1.08rem; font-weight: 600; }
 .home-card p { margin: 0; color: var(--ink-soft); font-size: .86rem; }
 .home-card-go { margin-top: 8px; font-weight: 600; font-size: .85rem; }
-/* per-card color */
-.home-card--blue  { --c: var(--blue);  --cs: var(--blue-soft); }
-.home-card--red   { --c: var(--red);   --cs: var(--red-soft); }
-.home-card--green { --c: var(--green); --cs: var(--green-soft); }
+/* each card is colored to match the screen it opens */
+.home-card--green  { --c: var(--green); }
+.home-card--yellow { --c: var(--yellow); }
+.home-card--red    { --c: var(--red); }
 .home-card .home-card-num { background: var(--c); }
 .home-card .home-card-go { color: var(--c); }
 .home-card:hover { border-color: var(--c); }
@@ -242,12 +243,8 @@ em { color: var(--accent); font-style: italic; }
   flex: none; width: 30px; height: 30px; border-radius: 50%;
   font-weight: 700; font-size: .9rem; display: grid; place-items: center;
   margin-top: 1px; color: #fff;
+  background: var(--green); /* Set up's page color */
 }
-/* cycle the four Super Famicom colors down the steps */
-.step:nth-child(4n+1) .step-num { background: var(--blue); }
-.step:nth-child(4n+2) .step-num { background: var(--red); }
-.step:nth-child(4n+3) .step-num { background: var(--yellow); }
-.step:nth-child(4n+4) .step-num { background: var(--green); }
 .step-body { padding-bottom: 24px; }
 .step:not(:last-child) .step-body { border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .step-body h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
@@ -287,15 +284,12 @@ em { color: var(--accent); font-style: italic; }
   min-height: 158px;
   transition: border-color .15s, transform .12s;
 }
-a.tile:hover { border-color: var(--c, var(--accent)); transform: translateY(-2px); }
+/* Starters' page color (yellow), used uniformly instead of a rainbow per sensor */
+a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .tile-emoji {
   width: 44px; height: 44px; display: grid; place-items: center;
-  border-radius: 11px; font-size: 24px; background: var(--bg-soft);
+  border-radius: 11px; font-size: 24px; background: var(--yellow-soft);
 }
-.tile--blue   { --c: var(--blue); }   .tile--blue   .tile-emoji { background: var(--blue-soft); }
-.tile--red    { --c: var(--red); }    .tile--red    .tile-emoji { background: var(--red-soft); }
-.tile--yellow { --c: var(--yellow); } .tile--yellow .tile-emoji { background: var(--yellow-soft); }
-.tile--green  { --c: var(--green); }  .tile--green  .tile-emoji { background: var(--green-soft); }
 .tile h3 { margin: 0; font-size: 1rem; font-weight: 600; }
 .tile p { margin: 0; font-size: .84rem; color: var(--ink-soft); }
 .tile .tags { margin-top: auto; display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; }
@@ -315,10 +309,9 @@ a.tile:hover { border-color: var(--c, var(--accent)); transform: translateY(-2px
 .msg {
   display: inline-block; margin-bottom: 10px;
   font-size: .9rem; padding: 4px 10px; border-radius: 7px; font-weight: 600;
+  color: var(--yellow-ink); background: var(--yellow-soft);
+  border: 1px solid color-mix(in srgb, var(--yellow) 30%, transparent);
 }
-.msg--red   { color: var(--red-ink);   background: var(--red-soft);   border: 1px solid color-mix(in srgb, var(--red) 25%, transparent); }
-.msg--green { color: var(--green-ink); background: var(--green-soft); border: 1px solid color-mix(in srgb, var(--green) 25%, transparent); }
-.msg--blue  { color: var(--blue-ink);  background: var(--blue-soft);  border: 1px solid color-mix(in srgb, var(--blue) 25%, transparent); }
 .card p { margin: 0; font-size: .88rem; color: var(--ink-soft); }
 
 /* ---------- Demo strip ---------- */
@@ -392,9 +385,9 @@ kbd {
 #game-canvas { display: block; max-width: 100%; border-radius: 8px; }
 .screen-badge {
   position: absolute; left: 22px; bottom: 22px;
-  font-size: .74rem; font-weight: 500;
-  background: rgba(255,255,255,.92); color: var(--ink-soft);
-  border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px;
+  font-size: .74rem; font-weight: 600;
+  background: var(--red-soft); color: var(--red-ink);
+  border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); padding: 4px 10px; border-radius: 999px;
 }
 
 /* ---------- Footer ---------- */
