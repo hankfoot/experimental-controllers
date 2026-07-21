@@ -241,6 +241,19 @@ em { color: var(--accent); font-style: italic; }
 .step-body h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
 .step-body p { margin: 0; color: var(--ink-soft); max-width: 60ch; }
 
+/* Optional (un-numbered) step */
+.step-num.step-num--opt {
+  background: var(--bg-soft); color: var(--ink-soft);
+  border: 1px dashed color-mix(in srgb, var(--ink) 22%, var(--line));
+  font-weight: 400; font-size: 1.15rem;
+}
+.opt-badge {
+  margin-left: 8px; vertical-align: 2px;
+  font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--ink-soft); background: var(--bg-soft);
+  border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px;
+}
+
 /* Screenshot placeholders */
 .shot { margin: 14px 0 0; }
 .shot-ph {
