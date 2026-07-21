@@ -18,7 +18,7 @@ export const SENSORS = [
     name: 'Buttons & touch',
     desc: 'A/B buttons and capacitive touch on pins 0/1/2.',
     types: ['trigger', 'state'],
-    tone: 'coral',
+    tone: 'red',
     url: null,
   },
   {
@@ -34,7 +34,7 @@ export const SENSORS = [
     name: 'Temperature',
     desc: 'Warm the board with your hands.',
     types: ['value'],
-    tone: 'pink',
+    tone: 'green',
     url: null,
   },
   {
@@ -42,7 +42,7 @@ export const SENSORS = [
     name: 'Sound (v2)',
     desc: 'Microphone loudness and clap detection.',
     types: ['value', 'trigger'],
-    tone: 'lilac',
+    tone: 'blue',
     url: null,
   },
   {
@@ -50,7 +50,7 @@ export const SENSORS = [
     name: 'Compass (v2)',
     desc: 'Magnetometer heading — spin an object to control.',
     types: ['value'],
-    tone: 'green',
+    tone: 'red',
     url: null,
   },
 ];
@@ -60,7 +60,7 @@ export function renderSensors(container) {
   for (const s of SENSORS) {
     const ready = !!s.url;
     const el = document.createElement(ready ? 'a' : 'div');
-    el.className = 'tile';
+    el.className = `tile tile--${s.tone}`;
     el.dataset.ready = String(ready);
     if (ready) {
       el.href = s.url;

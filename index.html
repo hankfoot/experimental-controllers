@@ -7,14 +7,19 @@
   <meta name="description" content="Turn everyday objects into game controllers with a micro:bit and Web Bluetooth. Companion site for the Fidget Camp 2026 unconventional-controllers workshop." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='6' y='6' width='20' height='20' rx='6' fill='%232563eb'/></svg>" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='4' y='4' width='11' height='11' rx='3' fill='%23e5484d'/><rect x='17' y='4' width='11' height='11' rx='3' fill='%23f4b400'/><rect x='4' y='17' width='11' height='11' rx='3' fill='%2334b24a'/><rect x='17' y='17' width='11' height='11' rx='3' fill='%232f6bff'/></svg>" />
 </head>
 <body>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="wordmark" href="#home"><span class="mark" aria-hidden="true"></span> Experimental Controllers</a>
+      <a class="wordmark" href="#home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 20 20"><rect x="0" y="0" width="9" height="9" rx="2.5" fill="#e5484d"/><rect x="11" y="0" width="9" height="9" rx="2.5" fill="#f4b400"/><rect x="0" y="11" width="9" height="9" rx="2.5" fill="#34b24a"/><rect x="11" y="11" width="9" height="9" rx="2.5" fill="#2f6bff"/></svg>
+        </span>
+        Experimental Controllers
+      </a>
 
       <nav class="menu" role="tablist" aria-label="Sections">
         <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
@@ -27,10 +32,12 @@
         <!-- Persistent live-signal chip; opens the full visualizer popover -->
         <button class="signal" id="signal-toggle" aria-expanded="false" aria-controls="viz-pop" title="Live input">
           <span class="sig-label">Live</span>
-          <span id="mini-trigger" class="sig-dot" aria-hidden="true"></span>
-          <span id="mini-state" class="sig-dot sig-state" data-on="false" aria-hidden="true"></span>
-          <canvas id="mini-canvas" class="sig-spark" width="120" height="34" aria-hidden="true"></canvas>
-          <span id="mini-value" class="sig-num">0.00</span>
+          <span class="sig-live">
+            <span id="mini-trigger" class="sig-dot" aria-hidden="true"></span>
+            <span id="mini-state" class="sig-dot sig-state" data-on="false" aria-hidden="true"></span>
+            <canvas id="mini-canvas" class="sig-spark" width="120" height="34" aria-hidden="true"></canvas>
+            <span id="mini-value" class="sig-num">0.00</span>
+          </span>
         </button>
 
         <div class="conn" role="status">
@@ -89,6 +96,7 @@
     <!-- SCREEN: Home -->
     <div class="panel screen" role="tabpanel" id="panel-home" aria-labelledby="tab-home">
       <section class="home-hero">
+        <div class="home-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
         <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
         <h1>Experimental Controllers</h1>
         <p class="home-lede">
@@ -119,30 +127,25 @@
       </section>
 
       <div class="home-cards">
-        <button class="home-card" data-tab-target="setup">
+        <button class="home-card home-card--blue" data-tab-target="setup">
           <span class="home-card-num">1</span>
           <h3>Set up</h3>
           <p>Get your micro:bit talking to the browser over Bluetooth.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
-        <button class="home-card" data-tab-target="starters">
+        <button class="home-card home-card--red" data-tab-target="starters">
           <span class="home-card-num">2</span>
           <h3>Starters</h3>
           <p>Pick a sensor and flash the example code for it.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
-        <button class="home-card" data-tab-target="game">
+        <button class="home-card home-card--green" data-tab-target="game">
           <span class="home-card-num">3</span>
           <h3>Game</h3>
           <p>Connect your controller and play.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
       </div>
-
-      <nav class="pager">
-        <span></span>
-        <button class="pager-btn pager-next" data-tab-target="setup">Set up <span aria-hidden="true">&rarr;</span></button>
-      </nav>
     </div>
 
     <!-- SCREEN: Set up -->
@@ -274,15 +277,15 @@
         </p>
         <div class="cards">
           <div class="card">
-            <code class="msg">trigger</code>
+            <code class="msg msg--red">trigger</code>
             <p>A one-off event — a shake, a clap, a click. This is what makes the game jump.</p>
           </div>
           <div class="card">
-            <code class="msg">state:true</code>
+            <code class="msg msg--green">state:true</code>
             <p>A held switch — a button pressed down, or an object being touched.</p>
           </div>
           <div class="card">
-            <code class="msg">value:0.42</code>
+            <code class="msg msg--blue">value:0.42</code>
             <p>A number from <code>0</code> to <code>1</code> — tilt, brightness, loudness.</p>
           </div>
         </div>

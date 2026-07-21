@@ -1,6 +1,6 @@
 // Entry point — wires the UI together.
 
-import { onStatus } from './bus.js';
+import { onStatus, onInput } from './bus.js';
 import { connect, disconnect, isSupported } from './bluetooth.js';
 import { initVisualizer } from './visualizer.js';
 import { initGame } from './game.js';
@@ -34,6 +34,10 @@ function openViz(open) {
   vizPop.hidden = !open;
   signalToggle.setAttribute('aria-expanded', String(open));
 }
+
+// Keep the chip compact until there's actually something live to show.
+function markLive() { signalToggle.classList.add('is-live'); }
+onInput(markLive);
 
 signalToggle.addEventListener('click', () => openViz(vizPop.hidden));
 vizClose.addEventListener('click', () => openViz(false));
@@ -72,6 +76,7 @@ onStatus(({ state, message }) => {
     statusText.textContent = message || 'Connected';
     connectBtn.disabled = false;
     connectBtn.textContent = 'Disconnect';
+    markLive();
   } else {
     statusText.textContent = 'Not connected';
     connectBtn.disabled = false;
