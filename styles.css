@@ -9,11 +9,11 @@
   --ink-faint: #a2a7b0;
   --line:      #e8e9ed;
 
-  /* Super Famicom face-button colors: A red · B yellow · X blue · Y green */
-  --red:    #e5484d;  --red-soft:    #fdecec;  --red-ink:    #d23a3f;
-  --yellow: #f4b400;  --yellow-soft: #fff6df;  --yellow-ink: #a5760f;
-  --green:  #34b24a;  --green-soft:  #e7f6ea;  --green-ink:  #2c9740;
-  --blue:   #2f6bff;  --blue-soft:   #eaf1ff;  --blue-ink:   #2a60e6;
+  /* Super Famicom face-button colors: X blue (top) · A red (right) · B yellow (bottom) · Y green (left) */
+  --red:    #d1483f;  --red-soft:    #fbeae8;  --red-ink:    #b83a32;
+  --yellow: #e4a530;  --yellow-soft: #fdf3e0;  --yellow-ink: #a1741f;
+  --green:  #4a9e78;  --green-soft:  #e9f4ee;  --green-ink:  #3c8264;
+  --blue:   #4d78c8;  --blue-soft:   #eaf0fa;  --blue-ink:   #3d63ab;
 
   --accent: var(--blue);
   --accent-soft: var(--blue-soft);
@@ -177,12 +177,16 @@ code {
 main { padding-block: 12px 64px; }
 
 .home-hero { text-align: center; max-width: 660px; margin: 0 auto; padding-top: 56px; }
-.home-mark { display: flex; justify-content: center; gap: 7px; margin-bottom: 22px; }
-.home-mark span { width: 15px; height: 15px; border-radius: 5px; }
-.home-mark span:nth-child(1) { background: var(--red); }
-.home-mark span:nth-child(2) { background: var(--yellow); }
-.home-mark span:nth-child(3) { background: var(--green); }
-.home-mark span:nth-child(4) { background: var(--blue); }
+/* Diamond layout matching the real SFC face buttons: X top / A right / B bottom / Y left */
+.home-mark {
+  position: relative; width: 54px; height: 54px;
+  margin: 0 auto 24px;
+}
+.home-mark span { position: absolute; width: 16px; height: 16px; border-radius: 50%; }
+.home-mark span:nth-child(1) { background: var(--blue);   top: 0;    left: 19px; }  /* X */
+.home-mark span:nth-child(2) { background: var(--red);    top: 19px; left: 38px; }  /* A */
+.home-mark span:nth-child(3) { background: var(--yellow); top: 38px; left: 19px; }  /* B */
+.home-mark span:nth-child(4) { background: var(--green);  top: 19px; left: 0;    }  /* Y */
 
 .eyebrow {
   font-weight: 600; font-size: .78rem; letter-spacing: .08em;
