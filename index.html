@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Experimental Controllers · Fidget Camp 2026</title>
+  <meta name="description" content="Turn everyday objects into game controllers with a micro:bit and Web Bluetooth. Companion site for the Fidget Camp 2026 unconventional-controllers workshop." />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎮</text></svg>" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <span class="brand-mark">🎮</span>
+        <div>
+          <h1>Experimental Controllers</h1>
+          <p class="tagline">Fidget Camp 2026 · unconventional controllers workshop</p>
+        </div>
+      </div>
+      <div class="conn">
+        <span id="status-dot" class="status-dot" data-state="disconnected"></span>
+        <span id="status-text" class="status-text">Not connected</span>
+        <button id="connect-btn" class="btn btn-primary">Connect micro:bit</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="unsupported-banner" class="banner banner-warn wrap" hidden>
+    ⚠️ Your browser doesn't support <strong>Web Bluetooth</strong>. Use
+    <strong>Chrome</strong> or <strong>Edge</strong> on desktop or Android (not Safari or Firefox).
+    You can still explore with <a href="#" id="banner-demo-link">Demo mode</a>.
+  </div>
+
+  <main class="wrap">
+
+    <section class="intro">
+      <p>
+        Wire a real-world object to a <strong>BBC micro:bit</strong>, and its sensors stream your
+        interactions over <strong>Web Bluetooth</strong> to this page — turning an everyday fidget
+        object into a controller for a browser game. Flash a starter, connect, and play.
+      </p>
+    </section>
+
+    <!-- STEP 1 — sensor starters -->
+    <section id="sensors">
+      <h2><span class="step">1</span> Flash a sensor starter</h2>
+      <p class="section-sub">
+        Each starter reads one kind of micro:bit input and streams it using the same simple
+        protocol (below). Open one in MakeCode, tweak it for your object, and flash it to a
+        micro:bit&nbsp;v2.
+      </p>
+      <div class="card-grid" id="sensor-grid"><!-- populated by main.js --></div>
+    </section>
+
+    <!-- The protocol -->
+    <section id="protocol">
+      <h2>The input protocol</h2>
+      <p class="section-sub">
+        Every starter speaks the same three-message language over the micro:bit UART service, one
+        message per line. The browser only understands these three abstract types — so the same
+        visualizer and game work with <em>any</em> sensor you build.
+      </p>
+      <div class="proto-grid">
+        <div class="proto-card">
+          <code class="proto-msg">trigger</code>
+          <p><strong>Momentary event.</strong> Fires once — a shake, clap, or click. Drives the flap/jump.</p>
+        </div>
+        <div class="proto-card">
+          <code class="proto-msg">state:true</code>
+          <p><strong>Held on/off.</strong> Changes when the input turns on or off — a button held down, or an object being touched.</p>
+        </div>
+        <div class="proto-card">
+          <code class="proto-msg">value:0.42</code>
+          <p><strong>Continuous.</strong> A reading normalized to <code>0.0</code>–<code>1.0</code> — tilt, light level, loudness.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2 — live input -->
+    <section id="visualizer">
+      <h2><span class="step">2</span> See your input live</h2>
+      <p class="section-sub">
+        Connect a micro:bit (top-right) — or flip on <button id="demo-toggle" class="linkish">Demo mode</button>
+        to test without hardware — and watch the messages arrive.
+      </p>
+
+      <div id="demo-panel" class="demo-panel" hidden>
+        <span class="demo-label">Demo mode</span>
+        <button id="demo-trigger" class="btn btn-ghost">Send <code>trigger</code></button>
+        <button id="demo-state" class="btn btn-ghost" data-on="false">Toggle <code>state</code></button>
+        <label class="demo-value">
+          <code>value</code>
+          <input id="demo-value" type="range" min="0" max="1" step="0.01" value="0" />
+        </label>
+        <span class="demo-hint">Tip: press <kbd>Space</kbd> for a trigger.</span>
+      </div>
+
+      <div class="viz-grid">
+        <div class="viz-card">
+          <div class="viz-head"><code>trigger</code></div>
+          <div id="trigger-light" class="trigger-light"></div>
+          <div class="viz-meta">Fired <strong id="trigger-count">0</strong> times</div>
+        </div>
+        <div class="viz-card">
+          <div class="viz-head"><code>state</code></div>
+          <div id="state-pill" class="state-pill" data-on="false">false</div>
+          <div class="viz-meta">Held boolean</div>
+        </div>
+        <div class="viz-card viz-card-wide">
+          <div class="viz-head"><code>value</code> <span id="value-readout" class="value-readout">0.00</span></div>
+          <canvas id="value-canvas" width="600" height="140"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3 — the game -->
+    <section id="game">
+      <h2><span class="step">3</span> Play</h2>
+      <p class="section-sub">
+        The game consumes the exact same input stream. Right now it's a placeholder — my
+        collaborator is dropping in <strong>Flappy Bird</strong> here. The little bird below already
+        listens for <code>trigger</code>, so you can confirm your controller works end-to-end.
+      </p>
+      <div class="game-frame">
+        <canvas id="game-canvas" width="480" height="320"></canvas>
+        <div class="game-badge">Placeholder — Flappy Bird coming soon</div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>
+        Made for <strong>Fidget Camp 2026</strong> ·
+        <a href="https://github.com/hankfoot/experimental-controllers">source on GitHub</a> ·
+        needs Chrome/Edge for Web Bluetooth
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
