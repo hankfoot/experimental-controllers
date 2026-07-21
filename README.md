@@ -27,6 +27,18 @@ per line:
 Because the browser only knows these three abstract types, the same visualizer and game work with
 *any* sensor you build.
 
+## Local preview
+
+This site uses ES modules (`<script type="module">`), which browsers refuse to load over the
+`file://` protocol — double-clicking `index.html` will load the page but silently break every
+button, tab, and popover (no console error, they just do nothing). Serve it over HTTP instead:
+
+```
+python -m http.server 8000
+```
+
+then open `http://localhost:8000/`.
+
 ## Sensor starter code
 
 <!-- MakeCode project links added as each starter is built -->
