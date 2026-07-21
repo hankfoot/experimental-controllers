@@ -1,4 +1,4 @@
-# Experimental Controllers
+# Experimental Game Controllers
 
 A companion website for the **Fidget Camp 2026** workshop on unconventional controllers.
 

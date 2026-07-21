@@ -1,4 +1,4 @@
-/* Experimental Controllers — Fidget Camp 2026
+/* Experimental Game Controllers — Fidget Camp 2026
    Minimal, centered ("Google treatment"), with a Super Famicom four-color accent set. */
 
 :root {
@@ -244,9 +244,8 @@ em { color: var(--accent); font-style: italic; }
 .step-body h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
 .step-body p { margin: 0; color: var(--ink-soft); max-width: 60ch; }
 
-/* Numbered section headings on the Sensors page (block-head badges) */
-.block-head .step-num { margin-top: 0; }
-#panel-starters .block-head .step-num { background: var(--yellow); } /* Sensors' page color */
+/* The Controller page reuses the step list but in its own color (Setup is red). */
+#panel-starters .step-num { background: var(--yellow); }
 
 /* Optional (un-numbered) step */
 .step-num.step-num--opt {
@@ -300,12 +299,6 @@ em { color: var(--accent); font-style: italic; }
 }
 .code-copy:hover { color: var(--ink); border-color: var(--ink-faint); }
 .code-copy.copied { color: var(--green-ink); border-color: var(--green); }
-
-/* ---------- Cards (shared) ---------- */
-.card {
-  background: var(--bg); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow);
-}
 
 /* ---------- Sensor tiles ---------- */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
@@ -393,15 +386,12 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 /* ---------- Builder output ---------- */
 .code-block-wide { max-width: 720px; }
 .build-empty { margin: 0; color: var(--ink-faint); font-size: .9rem; }
-.build-list { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.build-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .build-list li {
   background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
   padding: 12px 16px; font-size: .88rem; color: var(--ink-soft); max-width: 720px;
 }
 .build-list li strong { color: var(--ink); }
-.build-final { margin: 0; padding-left: 22px; color: var(--ink-soft); font-size: .92rem; max-width: 66ch; }
-.build-final li { margin-bottom: 8px; }
-.build-final li::marker { font-weight: 700; color: var(--yellow-ink); }
 
 /* ---------- Protocol cards ---------- */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }

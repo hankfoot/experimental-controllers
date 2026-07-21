@@ -361,16 +361,8 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl }) {
     }
 
     stepsEl.innerHTML = selected.size === 0
-      ? `<p class="build-empty">Check at least one input above — the code and build steps fill in here.</p>`
-      : `
-        <ul class="build-list">${notes.join('')}</ul>
-        <ol class="build-final">
-          <li>Copy the code above and paste it over <em>everything</em> in the JavaScript tab of
-              your MakeCode project, then <strong>Download</strong> to flash (see Setup).</li>
-          <li>Click <strong>Connect</strong> in the top bar, then open the <strong>Live</strong>
-              panel and check every input responds before building around it.</li>
-        </ol>
-      `;
+      ? `<p class="build-empty">Check some inputs in step 1 and each one's build tips will appear here.</p>`
+      : `<ul class="build-list">${notes.join('')}</ul>`;
   }
 
   grid.addEventListener('click', (e) => {

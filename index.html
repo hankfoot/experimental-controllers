@@ -21,13 +21,13 @@
         <span class="mark" aria-hidden="true">
           <svg viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
         </span>
-        Experimental Controllers
+        Experimental Game Controllers
       </a>
 
       <nav class="menu" role="tablist" aria-label="Sections">
         <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
         <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Setup</button>
-        <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Sensors</button>
+        <button class="tab" role="tab" id="tab-starters" aria-controls="panel-starters" aria-selected="false" tabindex="-1">Controller</button>
         <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
       </nav>
 
@@ -109,7 +109,7 @@
         </button>
         <button class="home-card home-card--yellow" data-tab-target="starters">
           <span class="home-card-num">2</span>
-          <h3>Sensors</h3>
+          <h3>Controller</h3>
           <p>Design your controller and generate its code.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
@@ -260,67 +260,62 @@ basic.forever(function () {
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="home"><span aria-hidden="true">&larr;</span> Home</button>
-        <button class="pager-btn pager-next" data-tab-target="starters">Sensors <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="starters">Controller <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
     <!-- SCREEN: Starters -->
     <div class="panel screen" role="tabpanel" id="panel-starters" aria-labelledby="tab-starters" hidden>
       <section class="block" id="builder">
-        <div class="block-head"><span class="step-num">1</span><h2>Design your controller</h2></div>
+        <div class="block-head"><h2>Design your controller</h2></div>
         <p class="lead">
-          Check the inputs your controller will use — pins also pick <em>how</em> they're wired.
-          The code and build steps below update as you go.
+          Pick the inputs your controller will use, copy the code it generates into MakeCode,
+          then build your object around them. No coding required.
         </p>
-        <div id="builder-grid"><!-- populated by js/builder.js --></div>
-        <p class="builder-warn" id="builder-warning" role="status" hidden></p>
-      </section>
 
-      <section class="block" id="builder-code-section">
-        <div class="block-head"><span class="step-num">2</span><h2>Your code</h2></div>
-        <p class="lead">
-          Paste this over everything in the <strong>JavaScript</strong> tab of your MakeCode
-          project (Setup, step&nbsp;3), then flash it. You can also switch back to Blocks
-          view to see and tweak it visually.
-        </p>
-        <div class="code-block code-block-wide">
-          <button class="code-copy" type="button">Copy</button>
-          <pre><code id="builder-code"></code></pre>
-        </div>
-      </section>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <h3>Enable inputs</h3>
+              <p>
+                Check every input your controller will use — pins also pick <em>how</em> they're
+                wired. The code and build tips below update as you go.
+              </p>
+              <div id="builder-grid"><!-- populated by js/builder.js --></div>
+              <p class="builder-warn" id="builder-warning" role="status" hidden></p>
+            </div>
+          </li>
 
-      <section class="block" id="builder-steps-section">
-        <div class="block-head"><span class="step-num">3</span><h2>Build it</h2></div>
-        <div id="builder-steps"><!-- populated by js/builder.js --></div>
-      </section>
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <h3>Copy your code</h3>
+              <p>
+                Paste this over <em>everything</em> in the <strong>JavaScript</strong> tab of your
+                MakeCode project (Setup, step&nbsp;3), then <strong>Download</strong> to flash it.
+                You can switch to Blocks view anytime to see and tweak it visually.
+              </p>
+              <div class="code-block code-block-wide">
+                <button class="code-copy" type="button">Copy</button>
+                <pre><code id="builder-code"></code></pre>
+              </div>
+            </div>
+          </li>
 
-      <section class="block" id="protocol">
-        <div class="block-head"><span class="step-num">4</span><h2>The protocol</h2></div>
-        <p class="lead">
-          Every reading your micro:bit sends is one line of text: a channel name, a colon, a
-          number. That's the whole protocol — the page doesn't know anything about specific
-          sensors, so any channel you send shows up in the <strong>Live</strong> panel.
-        </p>
-        <div class="cards">
-          <div class="card">
-            <code class="msg">channel:number</code>
-            <p>The one message shape. Even channel names you invent yourself will appear live.</p>
-          </div>
-          <div class="card">
-            <code class="msg">btna:1 &nbsp; light:187</code>
-            <p>Buttons and touch send <code>1</code>/<code>0</code>; sensors send their raw
-               reading (light 0–255, pins 0–1023, tilt in degrees).</p>
-          </div>
-          <div class="card">
-            <code class="msg">shake:1</code>
-            <p>One-off events send a <code>1</code> the moment they happen.</p>
-          </div>
-        </div>
-        <p class="note">
-          <strong>Where does "flap" come from?</strong> Nowhere on the micro:bit! Mapping channels
-          to game actions (flap on shake, steer with tilt…) happens in the browser, on the
-          <strong>Game</strong> screen — so you can remap instantly without reflashing.
-        </p>
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Build your controller</h3>
+              <p>
+                Wire up each input and turn your object into a controller. Then hit
+                <strong>Connect</strong> in the top bar and open <strong>Live</strong> to check
+                every input responds.
+              </p>
+              <div id="builder-steps"><!-- populated by js/builder.js --></div>
+            </div>
+          </li>
+        </ol>
       </section>
 
       <nav class="pager">
@@ -345,7 +340,7 @@ basic.forever(function () {
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="starters"><span aria-hidden="true">&larr;</span> Sensors</button>
+        <button class="pager-btn" data-tab-target="starters"><span aria-hidden="true">&larr;</span> Controller</button>
         <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
       </nav>
     </div>
@@ -354,7 +349,7 @@ basic.forever(function () {
 
   <footer class="foot">
     <div class="wrap foot-inner">
-      <span>Fidget Camp 2026 · Experimental Controllers</span>
+      <span>Fidget Camp 2026 · Experimental Game Controllers</span>
       <a href="https://github.com/hankfoot/experimental-controllers">GitHub</a>
     </div>
   </footer>
