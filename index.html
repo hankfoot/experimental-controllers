@@ -329,13 +329,22 @@ basic.forever(function () {
       <section class="block" id="game">
         <div class="block-head"><h2>Play</h2></div>
         <p class="lead">
-          Connect your controller in the top bar — the game will run here. It's still being built.
-          You can check your controller is working any time in the <strong>Live</strong> panel
-          (top-right).
+          Fly through the gaps without hitting a pipe. Press <strong>Space</strong>, tap the game,
+          or use your controller: button presses and gestures flap immediately, while a big change
+          from a live sensor also counts as a flap.
         </p>
-        <div class="game-placeholder">
-          <span class="game-placeholder-badge">Coming soon</span>
-          <p>The game will appear here.</p>
+        <div class="game-shell">
+          <div class="game-bar" aria-label="Game score">
+            <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
+            <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
+            <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
+          </div>
+          <canvas id="game-canvas" width="480" height="600" tabindex="0"
+                  aria-label="Flappy Bird game. Press Space or tap to flap."></canvas>
+          <div class="game-controls">
+            <button class="btn game-flap" id="game-flap" type="button">Flap</button>
+            <p id="game-status" role="status" aria-live="polite">Loading game…</p>
+          </div>
         </div>
       </section>
 

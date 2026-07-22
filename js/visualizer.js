@@ -11,7 +11,7 @@
 // multiple simultaneous streams can't make it thrash.
 
 import { onInput } from './bus.js';
-import { channelInfo } from './channels.js';
+import { channelInfo, channelKind, isBinaryValue } from './channels.js';
 
 const HISTORY = 120;
 
@@ -73,13 +73,11 @@ export function initVisualizer() {
     const info = channelInfo(channel);
     let row = rows.get(channel);
     if (!row) {
-      const kind = info.kind === 'event' ? 'event'
-        : (value === 0 || value === 1) ? 'binary' : 'number';
-      row = makeRow(channel, kind);
+      row = makeRow(channel, channelKind(channel, value));
     }
 
     // A "binary" channel that sends a non-0/1 value was numeric all along.
-    if (row.kind === 'binary' && value !== 0 && value !== 1) {
+    if (row.kind === 'binary' && !isBinaryValue(value)) {
       row.kind = 'number';
       if (row.el) row.el.dataset.kind = 'number';
       fillViz(row);

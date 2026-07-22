@@ -36,3 +36,14 @@ export const CHANNELS = {
 export function channelInfo(name) {
   return CHANNELS[name] || { label: name, emoji: '📡' };
 }
+
+/** Whether a value can still represent a binary on/off channel. */
+export function isBinaryValue(value) {
+  return value === 0 || value === 1;
+}
+
+/** Infer how a channel should initially be interpreted from its first reading. */
+export function channelKind(name, value) {
+  if (channelInfo(name).kind === 'event') return 'event';
+  return isBinaryValue(value) ? 'binary' : 'number';
+}

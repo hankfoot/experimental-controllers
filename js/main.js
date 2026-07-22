@@ -5,6 +5,7 @@ import { connect, disconnect, isSupported } from './bluetooth.js';
 import { initVisualizer } from './visualizer.js';
 import { initDemo } from './demo.js';
 import { initBuilder } from './builder.js';
+import { initGame } from './game.js';
 import { initTabs } from './tabs.js';
 
 // --- Tabs ------------------------------------------------------------------
@@ -21,6 +22,7 @@ initBuilder({
 // --- Consumers -------------------------------------------------------------
 initVisualizer();
 initDemo();
+initGame();
 
 // --- Copy buttons on code blocks -------------------------------------------
 document.querySelectorAll('.code-copy').forEach((btn) => {
