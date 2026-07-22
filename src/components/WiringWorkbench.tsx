@@ -18,8 +18,8 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { IconArrowRight, IconPlugConnected, IconTrash } from '@tabler/icons-react';
-import { useEffect, useReducer, useState } from 'react';
-import { inputBus } from '../domain/bus';
+import { useState } from 'react';
+import type { InputBus } from '../domain/bus';
 import type { Signal, SignalStore } from '../domain/signalStore';
 import {
   canConnect,
@@ -28,11 +28,13 @@ import {
   type WireTarget,
   WiringEngine,
 } from '../domain/wiring';
+import { useConnections, useSignals } from '../hooks/useDomainSnapshots';
 import { ConnectionEditor, connectionSummary } from './ConnectionEditor';
 
 interface WiringWorkbenchProps {
   signalStore: SignalStore;
   engine: WiringEngine;
+  inputBus: InputBus;
 }
 
 function formatValue(value: number | null): string {
@@ -46,20 +48,16 @@ function sourceStatus(signal: Signal): string {
   return 'saved';
 }
 
-export function WiringWorkbench({ signalStore, engine }: WiringWorkbenchProps) {
-  const [, rerender] = useReducer((value) => value + 1, 0);
+export function WiringWorkbench({ signalStore, engine, inputBus }: WiringWorkbenchProps) {
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [message, setMessage] = useState('Choose an input, then choose what it should control.');
   const [clearOpened, setClearOpened] = useState(false);
 
-  useEffect(() => signalStore.subscribe(() => rerender()), [signalStore]);
-  useEffect(() => engine.subscribe(() => rerender()), [engine]);
-
-  const signals = signalStore.all().sort((left, right) => {
+  const signals = useSignals(signalStore).sort((left, right) => {
     const rank = (signal: Signal) => Number(signal.live) * 2 + Number(signal.planned);
     return rank(right) - rank(left) || left.label.localeCompare(right.label);
   });
-  const connections = engine.listConnections();
+  const connections = useConnections(engine);
   const selected = selectedSource ? signalStore.get(selectedSource) : null;
 
   const connect = (source: string, target: WireTarget) => {

@@ -20,6 +20,7 @@ function setup(storage: StorageLike | null = null) {
     setPositionEnabled: vi.fn(),
   };
   const wiring = new WiringEngine(signals, actions, { storage });
+  wiring.start();
   return {
     actions,
     bus,
@@ -81,6 +82,19 @@ describe('WiringEngine', () => {
     expect(context.actions.restartGame).toHaveBeenCalledTimes(2);
   });
 
+  it('can trigger on every repeated binary event sample', () => {
+    const context = setup();
+    context.emit('custom', 1, 0);
+    const connection = context.wiring.addConnection('custom', { node: 'flap', port: 'trigger' });
+    expect(connection).not.toBeNull();
+    context.wiring.updateConnection(connection!.id, { type: 'event', cooldownMs: 160 });
+
+    context.emit('custom', 1, 200);
+    context.emit('custom', 1, 400);
+
+    expect(context.actions.flap).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects event signals for continuous value ports', () => {
     const context = setup();
     context.emit('shake', 1);
@@ -94,6 +108,19 @@ describe('WiringEngine', () => {
     context.wiring.addConnection('btna', { node: 'restart', port: 'trigger' });
     expect(context.actions.setPositionEnabled).toHaveBeenCalledTimes(1);
     expect(context.actions.setPositionEnabled).toHaveBeenCalledWith(false);
+  });
+
+  it('rejects transforms that do not match the target port', () => {
+    const context = setup();
+    context.emit('btna', 0);
+    const connection = context.wiring.addConnection('btna', { node: 'flap', port: 'trigger' });
+    expect(connection).not.toBeNull();
+
+    context.wiring.updateConnection(connection!.id, {
+      type: 'range', min: 0, max: 1, invert: false, smoothing: 0,
+    });
+
+    expect(context.wiring.listConnections()[0].transform.type).toBe('edge');
   });
 
   it('restores valid saved wires and ignores malformed entries', () => {
@@ -119,6 +146,57 @@ describe('WiringEngine', () => {
     const storage: StorageLike = { getItem: () => stored, setItem: vi.fn() };
     const context = setup(storage);
     expect(context.wiring.listConnections().map(({ id }) => id)).toEqual(['valid']);
+  });
+
+  it('migrates early v1 numeric triggers that omitted invert', () => {
+    const stored = JSON.stringify({
+      version: 1,
+      connections: [
+        {
+          id: 'threshold',
+          source: 'light',
+          sourceKind: 'number',
+          target: { node: 'flap', port: 'trigger' },
+          transform: {
+            type: 'threshold', min: 0, max: 255, direction: 'above', threshold: 0.5, cooldownMs: 160,
+          },
+        },
+        {
+          id: 'change',
+          source: 'pitch',
+          sourceKind: 'number',
+          target: { node: 'restart', port: 'trigger' },
+          transform: { type: 'change', min: 0, max: 360, amount: 0.2, cooldownMs: 160 },
+        },
+      ],
+    });
+    const context = setup({ getItem: () => stored, setItem: vi.fn() });
+
+    expect(context.wiring.listConnections().map(({ transform }) => transform)).toMatchObject([
+      { type: 'threshold', invert: false },
+      { type: 'change', invert: false },
+    ]);
+  });
+
+  it('reconciles saved source kinds with authoritative channel metadata', () => {
+    const stored = JSON.stringify({
+      version: 1,
+      connections: [{
+        id: 'shake-wire',
+        source: 'shake',
+        sourceKind: 'binary',
+        target: { node: 'flap', port: 'trigger' },
+        transform: { type: 'edge', edge: 'rising', cooldownMs: 160 },
+      }],
+    });
+    const storage: StorageLike = { getItem: () => stored, setItem: vi.fn() };
+    const context = setup(storage);
+
+    expect(context.wiring.listConnections()[0]).toMatchObject({
+      sourceKind: 'event',
+      transform: { type: 'event', cooldownMs: 160 },
+    });
+    expect(storage.setItem).toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
-import { Center, Container, Loader, Stack, Text, Title } from '@mantine/core';
+import { Container, Stack, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { WiringWorkbench } from '../components/WiringWorkbench';
+import type { InputBus } from '../domain/bus';
 import type { SignalStore } from '../domain/signalStore';
 import { WiringEngine } from '../domain/wiring';
 import { GameCanvas } from '../game/GameCanvas';
@@ -8,17 +9,16 @@ import { GameEngine } from '../game/gameEngine';
 
 interface GamePageProps {
   signalStore: SignalStore;
+  inputBus: InputBus;
 }
 
-export function GamePage({ signalStore }: GamePageProps) {
-  const [game] = useState(() => new GameEngine());
-  const [wiring, setWiring] = useState<WiringEngine | null>(null);
+export function GamePage({ signalStore, inputBus }: GamePageProps) {
+  const [{ game, wiring }] = useState(() => {
+    const gameEngine = new GameEngine();
+    return { game: gameEngine, wiring: new WiringEngine(signalStore, gameEngine) };
+  });
 
-  useEffect(() => {
-    const engine = new WiringEngine(signalStore, game);
-    setWiring(engine);
-    return () => engine.destroy();
-  }, [game, signalStore]);
+  useEffect(() => wiring.start(), [wiring]);
 
   return (
     <Container size="xl" py="xl">
@@ -28,18 +28,14 @@ export function GamePage({ signalStore }: GamePageProps) {
           Pick an input, choose what it controls, and test it immediately in the game.
         </Text>
       </Stack>
-      {wiring ? (
-        <div className="game-layout">
-          <div className="wiring-pane">
-            <WiringWorkbench signalStore={signalStore} engine={wiring} />
-          </div>
-          <aside className="game-pane" aria-label="Game preview">
-            <GameCanvas engine={game} />
-          </aside>
+      <div className="game-layout">
+        <div className="wiring-pane">
+          <WiringWorkbench signalStore={signalStore} engine={wiring} inputBus={inputBus} />
         </div>
-      ) : (
-        <Center mih={420}><Loader /></Center>
-      )}
+        <aside className="game-pane" aria-label="Game preview">
+          <GameCanvas engine={game} />
+        </aside>
+      </div>
     </Container>
   );
 }

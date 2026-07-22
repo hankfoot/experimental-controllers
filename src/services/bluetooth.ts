@@ -2,10 +2,8 @@ import { inputBus } from '../domain/bus';
 
 const UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const UART_TX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-const UART_RX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
 let device: BluetoothDevice | null = null;
-let receiveCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
 let buffer = '';
 const decoder = new TextDecoder();
 
@@ -33,7 +31,6 @@ export async function connectBluetooth(): Promise<void> {
     const transmitCharacteristic = await service.getCharacteristic(UART_TX);
     await transmitCharacteristic.startNotifications();
     transmitCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
-    receiveCharacteristic = await service.getCharacteristic(UART_RX).catch(() => null);
     buffer = '';
     inputBus.emitStatus({ state: 'connected', message: device.name ?? 'micro:bit' });
   } catch (error) {
@@ -47,22 +44,17 @@ export function disconnectBluetooth(): void {
   if (device?.gatt?.connected) device.gatt.disconnect();
 }
 
-export async function sendBluetooth(text: string): Promise<void> {
-  if (!receiveCharacteristic) return;
-  await receiveCharacteristic.writeValue(new TextEncoder().encode(`${text}\n`));
-}
-
 export function parseProtocolLine(raw: string): void {
   const separator = raw.indexOf(':');
   if (separator <= 0) return;
   const channel = raw.slice(0, separator).trim().toLowerCase();
-  const value = Number.parseFloat(raw.slice(separator + 1));
-  if (!channel || Number.isNaN(value)) return;
+  const encodedValue = raw.slice(separator + 1).trim();
+  const value = Number(encodedValue);
+  if (!channel || !encodedValue || !Number.isFinite(value)) return;
   inputBus.emitInput({ channel, value, raw });
 }
 
 function handleDisconnect(): void {
-  receiveCharacteristic = null;
   inputBus.emitStatus({ state: 'disconnected', message: 'micro:bit disconnected' });
 }
 

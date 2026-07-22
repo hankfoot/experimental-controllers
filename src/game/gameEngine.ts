@@ -1,4 +1,4 @@
-import type { GameActions } from '../domain/wiring';
+import type { GameActions } from './gameActions';
 
 export const GAME_RULES = {
   width: 480,

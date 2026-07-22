@@ -65,6 +65,8 @@ export type WireTransform =
   | ThresholdTransform
   | ChangeTransform;
 
+export type TriggerTransform = Exclude<WireTransform, RangeTransform>;
+
 export interface WireConnection {
   id: string;
   source: string;
@@ -73,20 +75,7 @@ export interface WireConnection {
   transform: WireTransform;
 }
 
-export interface GameActions {
-  flap(options?: { magnitude?: number }): void;
-  restartGame(): void;
-  setGameSpeed(value: number): void;
-  setGravity(value: number): void;
-  setPosition(value: number): void;
-  setPositionEnabled(enabled: boolean): void;
-}
-
 export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
-
-export type WiringEvent =
-  | { type: 'connections' }
-  | { type: 'activity'; connectionId: string; value: number; fired: boolean };

@@ -1,89 +1,71 @@
 import type { SignalKind } from './bus';
+import type { GameActions } from '../game/gameActions';
 import type { Signal, SignalStore, SignalStoreEvent } from './signalStore';
 import {
   canConnect,
-  defaultTransform,
   GAME_TARGETS,
-  isStoredConnection,
-  signalRange,
   targetPort,
 } from './wiringConfig';
+import {
+  clamp01,
+  createDefaultTransform,
+  createRuntimeState,
+  migrateTransformForSignal,
+  sampleRange,
+  sampleTrigger,
+  type WireRuntimeState,
+} from './wiringRuntime';
+import {
+  browserStorage,
+  loadConnections,
+  normalizeTransform,
+  saveConnections,
+} from './wiringStorage';
 import type {
-  GameActions,
   GameTarget,
   StorageLike,
-  TransformRange,
   WireConnection,
   WireTarget,
   WireTransform,
-  WiringEvent,
 } from './wiringTypes';
 
 export { canConnect, GAME_TARGETS } from './wiringConfig';
+export type { GameActions } from '../game/gameActions';
 export type {
   ChangeTransform,
   EdgeTransform,
   EventTransform,
-  GameActions,
   GameTarget,
   RangeTransform,
   StorageLike,
   TargetPort,
   ThresholdTransform,
+  TriggerTransform,
   WireConnection,
   WireTarget,
   WireTransform,
-  WiringEvent,
 } from './wiringTypes';
-
-const STORAGE_KEY = 'experimental-game-controllers:wiring:v1';
-const CONFIG_VERSION = 1;
-
-interface RuntimeState {
-  previousRaw: number | null;
-  previousNormalized: number | null;
-  filtered: number | null;
-  lastFiredAt: number;
-}
-
-const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 const portKey = (node: string, port: string): string => `${node}.${port}`;
-
-function safeBrowserStorage(): StorageLike | null {
-  try {
-    return globalThis.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function freshRuntimeState(): RuntimeState {
-  return {
-    previousRaw: null,
-    previousNormalized: null,
-    filtered: null,
-    lastFiredAt: -Infinity,
-  };
-}
 
 export class WiringEngine {
   readonly targets = GAME_TARGETS;
 
-  private readonly listeners = new Set<(event: WiringEvent) => void>();
-  private readonly runtime = new Map<string, RuntimeState>();
+  private readonly listeners = new Set<() => void>();
+  private readonly runtime = new Map<string, WireRuntimeState>();
   private readonly values = new Map<string, number>();
   private readonly storage: StorageLike | null;
-  private readonly unsubscribeSignals: () => void;
+  private unsubscribeSignals: (() => void) | null = null;
   private connections: WireConnection[] = [];
   private nextId = 0;
   private positionEnabled: boolean | null = null;
+  private revision = 0;
 
   constructor(
     private readonly signalStore: SignalStore,
     private readonly actions: GameActions,
     options: { storage?: StorageLike | null } = {},
   ) {
-    this.storage = options.storage === undefined ? safeBrowserStorage() : options.storage;
+    this.storage = options.storage === undefined ? browserStorage() : options.storage;
 
     GAME_TARGETS.forEach((target) => {
       target.ports.forEach((port) => {
@@ -93,10 +75,22 @@ export class WiringEngine {
       });
     });
 
-    this.load();
-    this.syncSources();
-    this.syncDestinations();
-    this.unsubscribeSignals = signalStore.subscribe((event) => this.handleSignalEvent(event));
+    this.connections = loadConnections(this.storage);
+  }
+
+  start(): () => void {
+    if (!this.unsubscribeSignals) {
+      this.syncSources();
+      this.reconcileSourceKinds();
+      this.syncDestinations();
+      this.unsubscribeSignals = this.signalStore.subscribe((event) => this.handleSignalEvent(event));
+    }
+    return () => this.stop();
+  }
+
+  stop(): void {
+    this.unsubscribeSignals?.();
+    this.unsubscribeSignals = null;
   }
 
   listConnections(): WireConnection[] {
@@ -125,7 +119,7 @@ export class WiringEngine {
       source,
       sourceKind: signal.kind,
       target: { ...target },
-      transform: defaultTransform(signal, port),
+      transform: createDefaultTransform(signal, port),
     };
     this.connections.push(connection);
     this.connectionsChanged();
@@ -135,7 +129,10 @@ export class WiringEngine {
   updateConnection(id: string, transform: WireTransform): void {
     const connection = this.connections.find((item) => item.id === id);
     if (!connection) return;
-    connection.transform = structuredClone(transform);
+    const port = targetPort(connection.target);
+    const normalized = normalizeTransform(transform);
+    if (!port || !normalized || (port.type === 'value') !== (normalized.type === 'range')) return;
+    connection.transform = normalized;
     this.runtime.delete(id);
     this.connectionsChanged();
   }
@@ -155,14 +152,18 @@ export class WiringEngine {
     this.connectionsChanged();
   }
 
-  subscribe(listener: (event: WiringEvent) => void, emitCurrent = false): () => void {
+  subscribe(listener: () => void, emitCurrent = false): () => void {
     this.listeners.add(listener);
-    if (emitCurrent) listener({ type: 'connections' });
+    if (emitCurrent) listener();
     return () => this.listeners.delete(listener);
   }
 
+  getRevision(): number {
+    return this.revision;
+  }
+
   destroy(): void {
-    this.unsubscribeSignals();
+    this.stop();
     this.listeners.clear();
   }
 
@@ -187,55 +188,21 @@ export class WiringEngine {
   private processValueConnection(connection: WireConnection, signal: Signal): void {
     if (connection.transform.type !== 'range') return;
     const state = this.runtimeState(connection.id);
-    let output = this.normalize(signal.value ?? 0, connection.transform);
-    const smoothing = clamp01(Number(connection.transform.smoothing) || 0);
-    if (state.filtered != null) output = state.filtered * smoothing + output * (1 - smoothing);
-    state.filtered = output;
+    const output = sampleRange(signal.value ?? 0, connection.transform, state);
     this.applyValue(connection.target.node, connection.target.port, output);
-    this.notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
   }
 
   private processTriggerConnection(connection: WireConnection, signal: Signal): void {
     if (connection.transform.type === 'range') return;
     const state = this.runtimeState(connection.id);
-    const transform = connection.transform;
-    const value = signal.value ?? 0;
-    let output = value;
-    let fired = false;
-
-    if (transform.type === 'event') {
-      fired = value > 0;
-    } else if (transform.type === 'edge') {
-      fired = transform.edge === 'falling'
-        ? state.previousRaw === 1 && value === 0
-        : value === 1 && state.previousRaw !== 1;
-    } else {
-      output = this.normalize(value, transform);
-      if (transform.type === 'change') {
-        fired = state.previousNormalized != null
-          && Math.abs(output - state.previousNormalized) >= clamp01(transform.amount);
-      } else {
-        const threshold = clamp01(transform.threshold);
-        fired = state.previousNormalized != null && (transform.direction === 'below'
-          ? state.previousNormalized >= threshold && output < threshold
-          : state.previousNormalized <= threshold && output > threshold);
-      }
-      state.previousNormalized = output;
-    }
-    state.previousRaw = value;
-
-    const cooldown = Math.max(0, transform.cooldownMs || 0);
-    if (fired && signal.lastSeen - state.lastFiredAt >= cooldown) {
-      state.lastFiredAt = signal.lastSeen;
+    const result = sampleTrigger(signal.value ?? 0, connection.transform, state, signal.lastSeen);
+    if (result.fired) {
       if (connection.target.node === 'flap') {
         this.actions.flap({ magnitude: this.values.get(portKey('flap', 'magnitude')) });
       } else if (connection.target.node === 'restart') {
         this.actions.restartGame();
       }
-    } else {
-      fired = false;
     }
-    this.notify({ type: 'activity', connectionId: connection.id, value: output, fired });
   }
 
   private migrateSourceKind(signal: Signal): void {
@@ -243,20 +210,7 @@ export class WiringEngine {
     this.connections.forEach((connection) => {
       if (connection.source !== signal.channel || connection.sourceKind === signal.kind) return;
       connection.sourceKind = signal.kind;
-      const range = signalRange(signal);
-
-      if (signal.kind === 'number' && connection.transform.type === 'edge') {
-        connection.transform = {
-          type: 'threshold',
-          ...range,
-          invert: false,
-          direction: connection.transform.edge === 'falling' ? 'below' : 'above',
-          threshold: 0.5,
-          cooldownMs: connection.transform.cooldownMs,
-        };
-      } else if (signal.kind === 'number' && connection.transform.type === 'range') {
-        connection.transform = { ...connection.transform, ...range };
-      }
+      connection.transform = migrateTransformForSignal(connection.transform, signal);
       this.runtime.delete(connection.id);
       changed = true;
     });
@@ -264,14 +218,8 @@ export class WiringEngine {
     if (changed) {
       this.syncSources();
       this.persist();
-      this.notify({ type: 'connections' });
+      this.notify();
     }
-  }
-
-  private normalize(value: number, transform: TransformRange): number {
-    const span = transform.max - transform.min || 1;
-    const normalized = clamp01((value - transform.min) / span);
-    return transform.invert ? 1 - normalized : normalized;
   }
 
   private applyValue(node: GameTarget['id'], port: string, value: number): void {
@@ -311,17 +259,43 @@ export class WiringEngine {
     );
   }
 
+  private reconcileSourceKinds(): void {
+    let changed = false;
+    this.connections = this.connections.filter((connection) => {
+      const signal = this.signalStore.get(connection.source);
+      const port = targetPort(connection.target);
+      if (!signal || !port) return true;
+      if (!canConnect(signal, port)) {
+        this.runtime.delete(connection.id);
+        changed = true;
+        return false;
+      }
+      if (connection.sourceKind !== signal.kind) {
+        connection.sourceKind = signal.kind;
+        connection.transform = migrateTransformForSignal(connection.transform, signal);
+        this.runtime.delete(connection.id);
+        changed = true;
+      }
+      return true;
+    });
+    if (changed) {
+      this.syncSources();
+      this.persist();
+      this.notify();
+    }
+  }
+
   private connectionsChanged(): void {
     this.syncSources();
     this.syncDestinations();
     this.persist();
-    this.notify({ type: 'connections' });
+    this.notify();
   }
 
-  private runtimeState(id: string): RuntimeState {
+  private runtimeState(id: string): WireRuntimeState {
     const existing = this.runtime.get(id);
     if (existing) return existing;
-    const state = freshRuntimeState();
+    const state = createRuntimeState();
     this.runtime.set(id, state);
     return state;
   }
@@ -330,31 +304,12 @@ export class WiringEngine {
     return left.node === right.node && left.port === right.port;
   }
 
-  private notify(event: WiringEvent): void {
-    this.listeners.forEach((listener) => listener(event));
+  private notify(): void {
+    this.revision += 1;
+    this.listeners.forEach((listener) => listener());
   }
 
   private persist(): void {
-    try {
-      this.storage?.setItem(STORAGE_KEY, JSON.stringify({
-        version: CONFIG_VERSION,
-        connections: this.connections,
-      }));
-    } catch {
-      // Persistence may be blocked; the in-memory editor remains fully usable.
-    }
-  }
-
-  private load(): void {
-    try {
-      const saved = JSON.parse(this.storage?.getItem(STORAGE_KEY) ?? 'null') as {
-        version?: number;
-        connections?: unknown[];
-      } | null;
-      if (saved?.version !== CONFIG_VERSION || !Array.isArray(saved.connections)) return;
-      this.connections = saved.connections.filter(isStoredConnection);
-    } catch {
-      this.connections = [];
-    }
+    saveConnections(this.storage, this.connections);
   }
 }

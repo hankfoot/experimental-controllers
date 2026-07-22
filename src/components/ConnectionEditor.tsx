@@ -17,10 +17,11 @@ import type {
   EventTransform,
   RangeTransform,
   ThresholdTransform,
+  TriggerTransform,
   WireConnection,
   WireTransform,
+  WiringEngine,
 } from '../domain/wiring';
-import type { WiringEngine } from '../domain/wiring';
 
 interface ConnectionEditorProps {
   connection: WireConnection;
@@ -28,62 +29,109 @@ interface ConnectionEditorProps {
   engine: WiringEngine;
 }
 
+type UpdateTransform = (transform: WireTransform) => void;
+
 export function ConnectionEditor({ connection, signal, engine }: ConnectionEditorProps) {
-  const update = (transform: WireTransform) => engine.updateConnection(connection.id, transform);
-  const transform = connection.transform;
+  const update: UpdateTransform = (transform) => engine.updateConnection(connection.id, transform);
+  const { transform } = connection;
 
   if (transform.type === 'range') {
-    const set = (patch: Partial<RangeTransform>) => update({ ...transform, ...patch });
-    const hasLiveRange = signal?.observedMin != null
-      && signal.observedMax != null
-      && signal.observedMin !== signal.observedMax;
-    return (
-      <Stack gap="sm">
-        <RangeInputs transform={transform} onChange={set} />
-        <Button
-          size="xs"
-          variant="light"
-          leftSection={<IconWand size={15} />}
-          disabled={!hasLiveRange}
-          onClick={() => {
-            if (signal?.observedMin == null || signal.observedMax == null) return;
-            set({ min: signal.observedMin, max: signal.observedMax });
-          }}
-        >
-          Use observed range
-        </Button>
-        <Switch label="Reverse direction" checked={transform.invert} onChange={(event) => set({ invert: event.currentTarget.checked })} />
-        <div>
-          <Group justify="space-between">
-            <Text size="sm">Smoothing</Text>
-            <Text size="sm" c="dimmed">{Math.round(transform.smoothing * 100)}%</Text>
-          </Group>
-          <Slider min={0} max={0.9} step={0.05} value={transform.smoothing} onChange={(smoothing) => set({ smoothing })} />
-        </div>
-      </Stack>
-    );
+    return <ValueEditor transform={transform} signal={signal} update={update} />;
   }
-
+  if (transform.type === 'edge' || (connection.sourceKind === 'binary' && transform.type === 'event')) {
+    return <BinaryTriggerEditor transform={transform} update={update} />;
+  }
   if (transform.type === 'event') {
-    const set = (patch: Partial<EventTransform>) => update({ ...transform, ...patch });
-    return <Cooldown value={transform.cooldownMs} onChange={(cooldownMs) => set({ cooldownMs })} />;
+    return <Cooldown value={transform.cooldownMs} onChange={(cooldownMs) => update({ ...transform, cooldownMs })} />;
   }
+  return <NumericTriggerEditor transform={transform} update={update} />;
+}
 
-  if (transform.type === 'edge') {
-    const set = (patch: Partial<EdgeTransform>) => update({ ...transform, ...patch });
-    return (
-      <Stack gap="sm">
-        <SegmentedControl
-          fullWidth
-          value={transform.edge}
-          data={[{ value: 'rising', label: 'On press' }, { value: 'falling', label: 'On release' }]}
-          onChange={(edge) => set({ edge: edge as EdgeTransform['edge'] })}
+function ValueEditor({ transform, signal, update }: {
+  transform: RangeTransform;
+  signal: Signal | null;
+  update: UpdateTransform;
+}) {
+  const set = (patch: Partial<RangeTransform>) => update({ ...transform, ...patch });
+  const hasObservedRange = signal?.observedMin != null
+    && signal.observedMax != null
+    && signal.observedMin !== signal.observedMax;
+
+  return (
+    <Stack gap="sm">
+      <RangeInputs transform={transform} onChange={set} />
+      <Button
+        size="xs"
+        variant="light"
+        leftSection={<IconWand size={15} />}
+        disabled={!hasObservedRange}
+        onClick={() => {
+          if (signal?.observedMin == null || signal.observedMax == null) return;
+          set({ min: signal.observedMin, max: signal.observedMax });
+        }}
+      >
+        Use observed range
+      </Button>
+      <Switch
+        label="Reverse direction"
+        checked={transform.invert}
+        onChange={(event) => set({ invert: event.currentTarget.checked })}
+      />
+      <div>
+        <Group justify="space-between">
+          <Text size="sm">Smoothing</Text>
+          <Text size="sm" c="dimmed">{Math.round(transform.smoothing * 100)}%</Text>
+        </Group>
+        <Slider
+          min={0}
+          max={0.9}
+          step={0.05}
+          value={transform.smoothing}
+          onChange={(smoothing) => set({ smoothing })}
         />
-        <Cooldown value={transform.cooldownMs} onChange={(cooldownMs) => set({ cooldownMs })} />
-      </Stack>
-    );
-  }
+      </div>
+    </Stack>
+  );
+}
 
+function BinaryTriggerEditor({ transform, update }: {
+  transform: EdgeTransform | EventTransform;
+  update: UpdateTransform;
+}) {
+  const mode = transform.type === 'event' ? 'event' : transform.edge;
+  const changeMode = (next: string | null) => {
+    if (!next) return;
+    if (next === 'event') {
+      update({ type: 'event', cooldownMs: transform.cooldownMs });
+    } else {
+      update({ type: 'edge', edge: next as EdgeTransform['edge'], cooldownMs: transform.cooldownMs });
+    }
+  };
+
+  return (
+    <Stack gap="sm">
+      <Select
+        label="Trigger when"
+        value={mode}
+        data={[
+          { value: 'rising', label: 'Pressed (0 → 1)' },
+          { value: 'falling', label: 'Released (1 → 0)' },
+          { value: 'event', label: 'Every 1 received' },
+        ]}
+        onChange={changeMode}
+      />
+      <Cooldown
+        value={transform.cooldownMs}
+        onChange={(cooldownMs) => update({ ...transform, cooldownMs })}
+      />
+    </Stack>
+  );
+}
+
+function NumericTriggerEditor({ transform, update }: {
+  transform: Exclude<TriggerTransform, EventTransform | EdgeTransform>;
+  update: UpdateTransform;
+}) {
   const setRange = (patch: { min?: number; max?: number }) => update({ ...transform, ...patch });
   const changeMode = (next: string | null) => {
     const range = { min: transform.min, max: transform.max, invert: transform.invert };
@@ -99,7 +147,10 @@ export function ConnectionEditor({ connection, signal, engine }: ConnectionEdito
       <Select
         label="Trigger when"
         value={transform.type}
-        data={[{ value: 'threshold', label: 'Crosses a level' }, { value: 'change', label: 'Changes suddenly' }]}
+        data={[
+          { value: 'threshold', label: 'Crosses a level' },
+          { value: 'change', label: 'Changes suddenly' },
+        ]}
         onChange={changeMode}
       />
       <RangeInputs transform={transform} onChange={setRange} />
@@ -114,20 +165,32 @@ export function ConnectionEditor({ connection, signal, engine }: ConnectionEdito
             fullWidth
             value={transform.direction}
             data={[{ value: 'above', label: 'Above' }, { value: 'below', label: 'Below' }]}
-            onChange={(direction) => update({ ...transform, direction: direction as ThresholdTransform['direction'] })}
+            onChange={(direction) => update({
+              ...transform,
+              direction: direction as ThresholdTransform['direction'],
+            })}
           />
-          <div>
-            <Text size="sm" mb={4}>Level: {Math.round(transform.threshold * 100)}%</Text>
-            <Slider min={0.05} max={0.95} step={0.05} value={transform.threshold} onChange={(threshold) => update({ ...transform, threshold })} />
-          </div>
+          <LabeledSlider
+            label="Level"
+            value={transform.threshold}
+            min={0.05}
+            max={0.95}
+            onChange={(threshold) => update({ ...transform, threshold })}
+          />
         </>
       ) : (
-        <div>
-          <Text size="sm" mb={4}>Minimum change: {Math.round(transform.amount * 100)}%</Text>
-          <Slider min={0.05} max={1} step={0.05} value={transform.amount} onChange={(amount) => update({ ...transform, amount })} />
-        </div>
+        <LabeledSlider
+          label="Minimum change"
+          value={transform.amount}
+          min={0.05}
+          max={1}
+          onChange={(amount) => update({ ...transform, amount })}
+        />
       )}
-      <Cooldown value={transform.cooldownMs} onChange={(cooldownMs) => update({ ...transform, cooldownMs })} />
+      <Cooldown
+        value={transform.cooldownMs}
+        onChange={(cooldownMs) => update({ ...transform, cooldownMs })}
+      />
     </Stack>
   );
 }
@@ -141,6 +204,21 @@ function RangeInputs({ transform, onChange }: {
       <NumberInput label="Raw minimum" value={transform.min} onChange={(value) => onChange({ min: Number(value) })} />
       <NumberInput label="Raw maximum" value={transform.max} onChange={(value) => onChange({ max: Number(value) })} />
     </SimpleGrid>
+  );
+}
+
+function LabeledSlider({ label, value, min, max, onChange }: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange(value: number): void;
+}) {
+  return (
+    <div>
+      <Text size="sm" mb={4}>{label}: {Math.round(value * 100)}%</Text>
+      <Slider min={min} max={max} step={0.05} value={value} onChange={onChange} />
+    </div>
   );
 }
 
@@ -160,7 +238,7 @@ function Cooldown({ value, onChange }: { value: number; onChange(value: number):
 
 export function connectionSummary(transform: WireTransform): string {
   if (transform.type === 'range') return 'continuous value';
-  if (transform.type === 'event') return 'every event';
+  if (transform.type === 'event') return 'every 1';
   if (transform.type === 'edge') return transform.edge === 'rising' ? 'on press' : 'on release';
   if (transform.type === 'change') return `changes ${Math.round(transform.amount * 100)}%`;
   return `${transform.direction} ${Math.round(transform.threshold * 100)}%`;

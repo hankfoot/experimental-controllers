@@ -38,6 +38,7 @@ export class SignalStore {
   private readonly signals = new Map<string, Signal>();
   private readonly listeners = new Set<(event: SignalStoreEvent) => void>();
   private readonly unsubscribeInput: () => void;
+  private revision = 0;
 
   constructor(bus: InputBus, private readonly now: () => number = () => performance.now()) {
     this.unsubscribeInput = bus.onInput(({ channel, value }) => this.receive(channel, value));
@@ -57,6 +58,10 @@ export class SignalStore {
     return () => this.listeners.delete(listener);
   }
 
+  getRevision(): number {
+    return this.revision;
+  }
+
   setPlannedChannels(descriptors: ChannelDescriptor[]): void {
     this.reconcileFlag('planned', descriptors);
   }
@@ -71,6 +76,7 @@ export class SignalStore {
   }
 
   private notify(event: SignalStoreEvent): void {
+    this.revision += 1;
     this.listeners.forEach((listener) => listener(event));
   }
 

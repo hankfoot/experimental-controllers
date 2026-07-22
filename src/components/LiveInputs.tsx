@@ -10,20 +10,19 @@ import {
   Text,
   ThemeIcon,
 } from '@mantine/core';
-import { useEffect, useReducer } from 'react';
-import { inputBus } from '../domain/bus';
+import type { InputBus } from '../domain/bus';
 import type { SignalStore } from '../domain/signalStore';
+import { useSignals } from '../hooks/useDomainSnapshots';
 
 interface LiveInputsProps {
   opened: boolean;
   onClose(): void;
   signalStore: SignalStore;
+  inputBus: InputBus;
 }
 
-export function LiveInputs({ opened, onClose, signalStore }: LiveInputsProps) {
-  const [, rerender] = useReducer((value) => value + 1, 0);
-  useEffect(() => signalStore.subscribe(() => rerender()), [signalStore]);
-  const signals = signalStore.all().filter((signal) => signal.live);
+export function LiveInputs({ opened, onClose, signalStore, inputBus }: LiveInputsProps) {
+  const signals = useSignals(signalStore, opened).filter((signal) => signal.live);
 
   return (
     <Drawer opened={opened} onClose={onClose} title="Live controller input" position="right" size="md">

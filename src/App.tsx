@@ -66,11 +66,15 @@ export function App() {
 
   useEffect(() => {
     let timer = 0;
-    return inputBus.onInput(() => {
+    const unsubscribe = inputBus.onInput(() => {
       setActive(true);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => setActive(false), 400);
     });
+    return () => {
+      unsubscribe();
+      window.clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => () => signalStore.destroy(), [signalStore]);
@@ -157,7 +161,7 @@ export function App() {
           {page === 'controller' && (
             <ControllerPage state={builder} onChange={setBuilder} onNavigate={navigate} />
           )}
-          {page === 'game' && <GamePage signalStore={signalStore} />}
+          {page === 'game' && <GamePage signalStore={signalStore} inputBus={inputBus} />}
         </Suspense>
       </AppShell.Main>
 
@@ -167,7 +171,7 @@ export function App() {
             <Text size="sm" c="dimmed">Fidget Camp 2026 · Experimental Game Controllers</Text>
             <Badge
               component="a"
-              href="https://github.com/hankfoot/experimental-controllers"
+              href="https://github.com/hankfoot/experimental-game-controllers"
               target="_blank"
               variant="light"
               color="gray"
@@ -178,7 +182,12 @@ export function App() {
         </Container>
       </Box>
 
-      <LiveInputs opened={liveOpened} onClose={() => setLiveOpened(false)} signalStore={signalStore} />
+      <LiveInputs
+        opened={liveOpened}
+        onClose={() => setLiveOpened(false)}
+        signalStore={signalStore}
+        inputBus={inputBus}
+      />
     </AppShell>
   );
 }
