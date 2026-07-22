@@ -1,8 +1,6 @@
-// Minimal Flappy Bird-style gameplay. Rendering and controller interpretation
-// are kept separate so this module only coordinates state, physics, and UI.
+// Minimal Flappy Bird-style gameplay. Raw controller interpretation lives in
+// the wiring engine; this module exposes a small normalized game-action API.
 
-import { onInput } from './bus.js';
-import { createControllerFlapDetector } from './game-input.js';
 import { createGameRenderer } from './game-renderer.js';
 
 const RULES = Object.freeze({
@@ -11,15 +9,28 @@ const RULES = Object.freeze({
   groundY: 530,
   birdX: 130,
   birdRadius: 16,
-  gravity: 1250,
-  flapVelocity: -390,
-  pipeSpeed: 145,
   pipeWidth: 66,
   pipeGap: 168,
-  pipeInterval: 1.65,
+  pipeSpacing: 240,
   firstPipeDelay: 1.2,
   pipeMargin: 70,
+  gravityMin: 500,
+  gravityMax: 2000,
+  flapMin: 220,
+  flapMax: 520,
+  pipeSpeedMin: 70,
+  pipeSpeedMax: 220,
 });
+
+const DEFAULT_CONTROLS = Object.freeze({
+  magnitude: 0.57,
+  gravity: 0.5,
+  speed: 0.5,
+  position: 0.5,
+});
+
+const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
+const lerp = (min, max, value) => min + (max - min) * clamp01(value);
 
 function newRound(best = 0) {
   return {
@@ -48,7 +59,7 @@ export function initGame() {
   const renderer = createGameRenderer(ui.canvas, RULES);
   if (!renderer) return;
 
-  const detectControllerFlap = createControllerFlapDetector();
+  const controls = { ...DEFAULT_CONTROLS, positionEnabled: false };
   let game = newRound();
   let lastFrame = performance.now();
 
@@ -63,6 +74,7 @@ export function initGame() {
 
   function reset() {
     game = newRound(game.best);
+    if (controls.positionEnabled) game.bird.y = positionY(controls.position);
     syncScore();
     setStatus('Ready — press Space, tap the game, or trigger your controller.');
   }
@@ -78,12 +90,24 @@ export function initGame() {
     setStatus(`Game over — score ${game.score}. Flap to try again.`);
   }
 
-  function flap(source = '') {
+  function flap({ magnitude = DEFAULT_CONTROLS.magnitude } = {}) {
     if (ui.panel.hidden) return;
     if (game.phase === 'over') reset();
     if (game.phase === 'ready') start();
-    game.bird.velocity = RULES.flapVelocity;
-    if (source) setStatus(`Playing — flap received from ${source}.`);
+    if (!controls.positionEnabled) {
+      game.bird.velocity = -lerp(RULES.flapMin, RULES.flapMax, magnitude);
+    }
+  }
+
+  function restartGame() {
+    if (ui.panel.hidden) return;
+    reset();
+    start();
+  }
+
+  function positionY(value) {
+    const margin = RULES.birdRadius + 2;
+    return margin + clamp01(value) * (RULES.groundY - margin * 2);
   }
 
   function spawnPipe() {
@@ -107,18 +131,25 @@ export function initGame() {
   }
 
   function update(dt) {
-    game.bird.velocity += RULES.gravity * dt;
-    game.bird.y += game.bird.velocity * dt;
+    if (controls.positionEnabled) {
+      const blend = 1 - Math.exp(-dt * 14);
+      game.bird.y += (positionY(controls.position) - game.bird.y) * blend;
+      game.bird.velocity = 0;
+    } else {
+      game.bird.velocity += lerp(RULES.gravityMin, RULES.gravityMax, controls.gravity) * dt;
+      game.bird.y += game.bird.velocity * dt;
+    }
 
+    const pipeSpeed = lerp(RULES.pipeSpeedMin, RULES.pipeSpeedMax, controls.speed);
     game.nextPipeIn -= dt;
     if (game.nextPipeIn <= 0) {
-      game.nextPipeIn += RULES.pipeInterval;
+      game.nextPipeIn += RULES.pipeSpacing / pipeSpeed;
       spawnPipe();
     }
 
     let collided = false;
     for (const pipe of game.pipes) {
-      pipe.x -= RULES.pipeSpeed * dt;
+      pipe.x -= pipeSpeed * dt;
       if (!pipe.scored && pipe.x + RULES.pipeWidth < RULES.birdX) {
         pipe.scored = true;
         game.score += 1;
@@ -144,11 +175,6 @@ export function initGame() {
     requestAnimationFrame(frame);
   }
 
-  onInput((message) => {
-    const source = detectControllerFlap(message);
-    if (source) flap(source);
-  });
-
   document.addEventListener('keydown', (event) => {
     const isFlapKey = event.code === 'Space' || event.code === 'ArrowUp';
     const hasNativeKeyboardAction = event.target.closest?.(
@@ -169,4 +195,23 @@ export function initGame() {
   renderer.resize();
   reset();
   requestAnimationFrame(frame);
+
+  return {
+    flap,
+    restartGame,
+    setGameSpeed(value) {
+      controls.speed = clamp01(value);
+    },
+    setGravity(value) {
+      controls.gravity = clamp01(value);
+    },
+    setPosition(value) {
+      controls.position = clamp01(value);
+    },
+    setPositionEnabled(enabled) {
+      controls.positionEnabled = Boolean(enabled);
+      game.bird.velocity = 0;
+      if (controls.positionEnabled) game.bird.y = positionY(controls.position);
+    },
+  };
 }

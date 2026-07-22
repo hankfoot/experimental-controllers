@@ -1,0 +1,8 @@
+{
+  "name": "experimental-game-controllers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

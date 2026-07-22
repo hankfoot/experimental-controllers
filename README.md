@@ -12,7 +12,8 @@ for a browser game of Flappy Bird.
 2. Paste that code into the ready-made MakeCode project (see the **Setup** page) and flash it to your micro:bit.
 3. Open this site in **Chrome or Edge** (Web Bluetooth isn't supported in Safari/Firefox).
 4. Click **Connect** and pair your micro:bit.
-5. Watch your inputs in the visualizer — then play.
+5. Watch your inputs in the visualizer.
+6. Wire those inputs to game controls on the **Game** page — then play.
 
 ## Input protocol
 
@@ -55,6 +56,20 @@ python -m http.server 8000
 ```
 
 then open `http://localhost:8000/`.
+
+Run the dependency-free JavaScript tests with:
+
+```
+npm test
+```
+
+## Wiring inputs to the game
+
+The Game page contains a visual patch bay. Choose or drag a controller input onto a compatible
+game port, then tune that connection's threshold, range, direction, or smoothing. Buttons and
+gestures work naturally as triggers; live sensor readings can drive continuous controls such as
+bird position, game speed, flap strength, and gravity. Wiring is stored locally in the browser and
+survives a refresh.
 
 ## Controller code builder
 

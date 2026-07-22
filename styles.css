@@ -474,6 +474,118 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .pager-next { background: var(--accent); border-color: var(--accent); color: #fff; }
 .pager-next:hover { background: var(--accent); filter: brightness(1.06); }
 
+/* ---------- Controller-to-game patch bay ---------- */
+.wiring-panel {
+  margin: 0 0 28px; padding: 18px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--bg-soft);
+}
+.wiring-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.wiring-head h3 { margin: 0; font-size: 1.08rem; }
+.wiring-head p { margin: 2px 0 0; color: var(--ink-soft); font-size: .86rem; }
+.wiring-clear { flex: none; padding: 6px 13px; font-size: .8rem; }
+
+.wiring-board {
+  position: relative; display: grid; grid-template-columns: minmax(220px, 1fr) minmax(260px, 1fr);
+  gap: 110px; margin-top: 18px;
+}
+.wiring-column { position: relative; z-index: 2; min-width: 0; }
+.wiring-column > h4, .wiring-maps-head h4 {
+  margin: 0 0 8px; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--ink-soft);
+}
+.wiring-sources { display: flex; flex-direction: column; gap: 8px; }
+.wiring-targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.wiring-source-empty, .wiring-empty {
+  margin: 0; padding: 14px; color: var(--ink-faint); font-size: .83rem;
+  background: var(--bg); border: 1px dashed var(--line); border-radius: 10px;
+}
+.wiring-source {
+  position: relative; display: grid; grid-template-columns: 1fr auto 12px; align-items: center;
+  gap: 10px; width: 100%; min-height: 58px; padding: 9px 8px 9px 11px;
+  text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  transition: border-color .15s, box-shadow .15s, transform .12s;
+}
+.wiring-source:hover { border-color: var(--green); transform: translateY(-1px); }
+.wiring-source[aria-pressed="true"] { border-color: var(--green); box-shadow: 0 0 0 2px var(--green-soft); }
+.wiring-source[data-live="false"] { border-style: dashed; }
+.wiring-source-id { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.wiring-source-emoji { font-size: 1.15rem; }
+.wiring-source-id div, .wiring-source-id span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.wiring-source-id strong { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wiring-source-id code { align-self: flex-start; margin-top: 2px; font-size: .65rem; }
+.wiring-source-reading {
+  font-family: var(--mono); font-size: .72rem; color: var(--ink-soft);
+  max-width: 66px; overflow: hidden; text-overflow: ellipsis;
+}
+.wiring-jack {
+  display: block; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg); border: 3px solid var(--green); box-shadow: 0 0 0 2px var(--bg);
+}
+
+.wiring-target {
+  padding: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: 11px;
+}
+.wiring-target-heading { display: flex; gap: 9px; margin-bottom: 9px; }
+.wiring-target-heading > span { font-size: 1.12rem; }
+.wiring-target-heading h4 { margin: 0; font-size: .88rem; }
+.wiring-target-heading p { margin: 1px 0 0; font-size: .73rem; line-height: 1.3; color: var(--ink-soft); }
+.wiring-port {
+  position: relative; display: grid; grid-template-columns: 12px 1fr auto auto; align-items: center;
+  gap: 8px; width: 100%; padding: 7px 9px 7px 4px; cursor: pointer;
+  text-align: left; font: inherit; font-size: .8rem; color: var(--ink);
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px;
+  transition: border-color .15s, opacity .15s, background .15s;
+}
+.wiring-port + .wiring-port { margin-top: 6px; }
+.wiring-port:hover, .wiring-port[data-compatible="true"]:focus-visible { border-color: var(--green); }
+.wiring-port[data-compatible="false"] { opacity: .38; cursor: not-allowed; }
+.wiring-port small { color: var(--ink-faint); font-size: .64rem; }
+.wiring-port b {
+  min-width: 19px; height: 19px; display: grid; place-items: center;
+  color: var(--green-ink); background: var(--green-soft); border-radius: 999px; font-size: .65rem;
+}
+.wiring-jack-target { border-color: var(--gray); }
+.wiring-jack-source { touch-action: none; }
+
+.wiring-cables {
+  position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%;
+  overflow: visible; pointer-events: none;
+}
+.wiring-cables path {
+  fill: none; stroke: color-mix(in srgb, var(--green) 74%, var(--ink));
+  stroke-width: 3; stroke-linecap: round; opacity: .68;
+  transition: stroke-width .1s, opacity .1s;
+}
+.wiring-cables path.active { stroke-width: 6; opacity: 1; }
+.wiring-cables .wiring-cable-drag { stroke-dasharray: 7 7; opacity: .55; }
+
+.wiring-status { min-height: 1.4em; margin: 12px 2px 0; color: var(--green-ink); font-size: .8rem; }
+.wiring-maps-head { display: flex; align-items: baseline; gap: 10px; margin: 18px 0 8px; }
+.wiring-maps-head h4 { margin-bottom: 0; }
+.wiring-maps-head span { color: var(--ink-faint); font-size: .73rem; }
+.wiring-empty[hidden] { display: none; }
+.wiring-connections { display: flex; flex-direction: column; gap: 8px; }
+.wiring-map {
+  padding: 11px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  transition: border-color .1s, box-shadow .1s;
+}
+.wiring-map.active { border-color: var(--green); box-shadow: 0 0 0 2px var(--green-soft); }
+.wiring-map-header { display: flex; align-items: center; gap: 10px; }
+.wiring-map-header strong { flex: 1; font-size: .82rem; }
+.wiring-map-value { font-family: var(--mono); font-size: .72rem; color: var(--green-ink); }
+.wiring-map-settings { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; margin-top: 9px; }
+.wiring-setting { display: flex; flex-direction: column; gap: 3px; color: var(--ink-soft); font-size: .67rem; }
+.wiring-setting select, .wiring-setting input[type="number"] {
+  min-height: 30px; max-width: 150px; padding: 4px 7px; font: inherit; font-size: .76rem;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 7px;
+}
+.wiring-setting input[type="number"] { width: 92px; font-family: var(--mono); }
+.wiring-setting input[type="range"] { width: 112px; accent-color: var(--green); }
+.wiring-setting-check { flex-direction: row; align-items: center; min-height: 30px; }
+.wiring-remove { flex: none; }
+.wiring-calibrate { padding: 5px 9px; font-size: .7rem; }
+
 /* ---------- Game ---------- */
 .game-shell {
   width: 100%; max-width: 520px; margin-inline: auto; padding: 14px;
@@ -505,11 +617,20 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   .home-cards { grid-template-columns: 1fr; }
+  .wiring-board { grid-template-columns: 1fr; gap: 20px; }
+  .wiring-cables { display: none; }
+  .wiring-jack { box-shadow: none; }
 }
 @media (max-width: 560px) {
   /* Collapse the signal pill to just its status dot to save top-row space. */
   .sig-label { display: none; }
   .viz-pop { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; }
+  .wiring-panel { padding: 14px; margin-inline: -8px; }
+  .wiring-targets { grid-template-columns: 1fr; }
+  .wiring-head { align-items: center; }
+  .wiring-head p { display: none; }
+  .wiring-maps-head { display: block; }
+  .wiring-maps-head span { display: block; margin-top: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

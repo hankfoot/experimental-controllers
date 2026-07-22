@@ -22,7 +22,9 @@ export function emitInput(msg) {
 
 /** Subscribe to input messages. @param {(msg: InputMsg) => void} handler */
 export function onInput(handler) {
-  bus.addEventListener('input', (e) => handler(e.detail));
+  const listener = (e) => handler(e.detail);
+  bus.addEventListener('input', listener);
+  return () => bus.removeEventListener('input', listener);
 }
 
 // Connection status is broadcast the same way so the UI can react.
@@ -35,5 +37,7 @@ export function emitStatus(status) {
 
 /** @param {(status: StatusMsg) => void} handler */
 export function onStatus(handler) {
-  bus.addEventListener('status', (e) => handler(e.detail));
+  const listener = (e) => handler(e.detail);
+  bus.addEventListener('status', listener);
+  return () => bus.removeEventListener('status', listener);
 }

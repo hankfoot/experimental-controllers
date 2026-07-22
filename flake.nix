@@ -22,10 +22,13 @@
         in
         {
           default = pkgs.mkShellNoCC {
-            packages = [ pkgs.python3 ];
+            packages = [
+              pkgs.nodejs
+              pkgs.python3
+            ];
 
             shellHook = ''
-              echo "Development shell ready. Run: python -m http.server 8000"
+              echo "Development shell ready. Preview: python -m http.server 8000 · Tests: npm test"
             '';
           };
         }

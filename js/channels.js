@@ -6,18 +6,18 @@
 // auto-scaled plot, so attendees can invent their own channels in MakeCode.
 
 export const CHANNELS = {
-  btna:    { label: 'Button A',    emoji: '🔘' },
-  btnb:    { label: 'Button B',    emoji: '🔘' },
-  logo:    { label: 'Logo touch',  emoji: '⭐' },
+  btna:    { label: 'Button A',    emoji: '🔘', kind: 'binary' },
+  btnb:    { label: 'Button B',    emoji: '🔘', kind: 'binary' },
+  logo:    { label: 'Logo touch',  emoji: '⭐', kind: 'binary' },
   p0:      { label: 'Pin 0',       emoji: '🔌', max: 1023 },
   p1:      { label: 'Pin 1',       emoji: '🔌', max: 1023 },
   p2:      { label: 'Pin 2',       emoji: '🔌', max: 1023 },
-  light:   { label: 'Light',       emoji: '💡', max: 255 },
-  temp:    { label: 'Temperature', emoji: '🌡️', min: 0, max: 50 },
-  mic:     { label: 'Sound',       emoji: '🎤', max: 255 },
-  pitch:   { label: 'Pitch',       emoji: '📐', min: -90,  max: 90 },
-  roll:    { label: 'Roll',        emoji: '📐', min: -180, max: 180 },
-  heading: { label: 'Compass',     emoji: '🧭', max: 360 },
+  light:   { label: 'Light',       emoji: '💡', kind: 'number', max: 255 },
+  temp:    { label: 'Temperature', emoji: '🌡️', kind: 'number', min: 0, max: 50 },
+  mic:     { label: 'Sound',       emoji: '🎤', kind: 'number', max: 255 },
+  pitch:   { label: 'Pitch',       emoji: '📐', kind: 'number', min: -90,  max: 90 },
+  roll:    { label: 'Roll',        emoji: '📐', kind: 'number', min: -180, max: 180 },
+  heading: { label: 'Compass',     emoji: '🧭', kind: 'number', max: 360 },
   // One-off accelerometer gestures — each fires a single "1".
   shake:     { label: 'Shake',      emoji: '🫨', kind: 'event' },
   tiltleft:  { label: 'Tilt left',  emoji: '👈', kind: 'event' },
@@ -44,6 +44,7 @@ export function isBinaryValue(value) {
 
 /** Infer how a channel should initially be interpreted from its first reading. */
 export function channelKind(name, value) {
-  if (channelInfo(name).kind === 'event') return 'event';
+  const kind = channelInfo(name).kind;
+  if (kind) return kind;
   return isBinaryValue(value) ? 'binary' : 'number';
 }

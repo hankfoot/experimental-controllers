@@ -59,6 +59,7 @@ function pinInput(n) {
     modes: {
       touch: {
         label: 'Touch pad',
+        kind: 'binary',
         channels: [ch],
         loop: binary(ch, `input.pinIsPressed(TouchPin.P${n})`),
         build:
@@ -67,6 +68,7 @@ function pinInput(n) {
       },
       switch: {
         label: 'Switch',
+        kind: 'binary',
         channels: [ch],
         loop: binary(ch, `pins.digitalReadPin(DigitalPin.P${n}) == 1`),
         build:
@@ -81,6 +83,7 @@ function pinInput(n) {
 function gesture(id, name, gestureName, emoji, desc, build) {
   return {
     id, emoji, name, desc,
+    kind: 'event',
     channels: [id],
     handlers: [
       `input.onGesture(Gesture.${gestureName}, function () {`,
@@ -102,6 +105,7 @@ export const SECTIONS = [
     inputs: [
       {
         id: 'btna', emoji: '🔘', name: 'Button A',
+        kind: 'binary',
         desc: 'The A button — pressed or not.',
         channels: ['btna'],
         loop: binary('btna', 'input.buttonIsPressed(Button.A)'),
@@ -109,6 +113,7 @@ export const SECTIONS = [
       },
       {
         id: 'btnb', emoji: '🔘', name: 'Button B',
+        kind: 'binary',
         desc: 'The B button — pressed or not.',
         channels: ['btnb'],
         loop: binary('btnb', 'input.buttonIsPressed(Button.B)'),
@@ -116,6 +121,7 @@ export const SECTIONS = [
       },
       {
         id: 'logo', emoji: '⭐', name: 'Logo touch',
+        kind: 'binary',
         desc: 'The gold logo is a touch sensor.',
         channels: ['logo'],
         loop: binary('logo', 'input.logoIsPressed()'),
@@ -133,6 +139,7 @@ export const SECTIONS = [
     inputs: [
       {
         id: 'tilt', emoji: '📐', name: 'Tilt',
+        kind: 'number',
         desc: 'Pitch & roll angles, live in degrees.',
         channels: ['pitch', 'roll'],
         loop: [
@@ -143,6 +150,7 @@ export const SECTIONS = [
       },
       {
         id: 'heading', emoji: '🧭', name: 'Compass',
+        kind: 'number',
         desc: 'Which way it points, 0–360°, live.',
         channels: ['heading'],
         loop: number('heading', 'input.compassHeading()'),
@@ -197,6 +205,7 @@ export const SECTIONS = [
     inputs: [
       {
         id: 'light', emoji: '💡', name: 'Light',
+        kind: 'number',
         desc: 'The LED grid doubles as a light sensor.',
         channels: ['light'],
         loop: number('light', 'input.lightLevel()'),
@@ -204,6 +213,7 @@ export const SECTIONS = [
       },
       {
         id: 'temp', emoji: '🌡️', name: 'Temperature',
+        kind: 'number',
         desc: 'The chip’s temperature in °C.',
         channels: ['temp'],
         loop: number('temp', 'input.temperature()'),
@@ -211,6 +221,7 @@ export const SECTIONS = [
       },
       {
         id: 'mic', emoji: '🎤', name: 'Sound',
+        kind: 'number',
         desc: 'Microphone loudness.',
         channels: ['mic'],
         loop: number('mic', 'input.soundLevel()'),
@@ -279,7 +290,7 @@ export function generateCode(selected, pinModes) {
 const STREAM_BUSY = 5; // gentle heads-up
 const STREAM_HEAVY = 8; // stronger warning
 
-export function initBuilder({ grid, codeEl, stepsEl, warnEl }) {
+export function initBuilder({ grid, codeEl, stepsEl, warnEl, onChange = () => {} }) {
   const selected = new Set();
   const pinModes = { p0: 'touch', p1: 'touch', p2: 'touch' };
 
@@ -363,6 +374,14 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl }) {
     stepsEl.innerHTML = selected.size === 0
       ? `<p class="build-empty">Check some inputs in step 1 and each one's build tips will appear here.</p>`
       : `<ul class="build-list">${notes.join('')}</ul>`;
+
+    const channels = [];
+    for (const input of INPUTS) {
+      if (!selected.has(input.id)) continue;
+      const variant = variantOf(input, pinModes);
+      variant.channels.forEach((channel) => channels.push({ channel, kind: variant.kind }));
+    }
+    onChange({ channels });
   }
 
   grid.addEventListener('click', (e) => {

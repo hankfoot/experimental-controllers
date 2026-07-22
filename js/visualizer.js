@@ -10,12 +10,11 @@
 // generic activity pulse (see main.js) — it renders NO per-channel data, so
 // multiple simultaneous streams can't make it thrash.
 
-import { onInput } from './bus.js';
-import { channelInfo, channelKind, isBinaryValue } from './channels.js';
+import { channelInfo } from './channels.js';
 
 const HISTORY = 120;
 
-export function initVisualizer() {
+export function initVisualizer(signalStore) {
   const el = (id) => document.getElementById(id);
 
   const rowsHost = el('live-rows');
@@ -69,17 +68,17 @@ export function initVisualizer() {
     }
   }
 
-  onInput(({ channel, value }) => {
-    const info = channelInfo(channel);
+  signalStore.subscribe(({ type, signal }) => {
+    if (type !== 'value') return;
+    const { channel, value, kind } = signal;
     let row = rows.get(channel);
     if (!row) {
-      row = makeRow(channel, channelKind(channel, value));
+      row = makeRow(channel, kind);
     }
 
-    // A "binary" channel that sends a non-0/1 value was numeric all along.
-    if (row.kind === 'binary' && !isBinaryValue(value)) {
-      row.kind = 'number';
-      if (row.el) row.el.dataset.kind = 'number';
+    if (row.kind !== kind) {
+      row.kind = kind;
+      if (row.el) row.el.dataset.kind = kind;
       fillViz(row);
     }
 
@@ -94,8 +93,8 @@ export function initVisualizer() {
       const pill = row.vizEl?.querySelector('.chan-pill');
       if (pill) { pill.dataset.on = String(value === 1); pill.textContent = String(value); }
     } else {
-      if (value < row.min) row.min = value;
-      if (value > row.max) row.max = value;
+      row.min = signal.min;
+      row.max = signal.max;
       row.vizEl?.querySelector('.chan-num')?.replaceChildren(fmt(value));
     }
   });

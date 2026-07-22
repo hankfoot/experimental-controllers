@@ -329,10 +329,41 @@ basic.forever(function () {
       <section class="block" id="game">
         <div class="block-head"><h2>Play</h2></div>
         <p class="lead">
-          Fly through the gaps without hitting a pipe. Press <strong>Space</strong>, tap the game,
-          or use your controller: button presses and gestures flap immediately, while a big change
-          from a live sensor also counts as a flap.
+          Decide what each part of your controller should do, then fly through the gaps without
+          hitting a pipe. Space, tap, and the Flap button always remain available.
         </p>
+        <section class="wiring-panel" aria-labelledby="wiring-title">
+          <div class="wiring-head">
+            <div>
+              <h3 id="wiring-title">Wire your controller</h3>
+              <p>Choose or drag an input to a compatible game port. Live values help you test every connection.</p>
+            </div>
+            <button class="btn btn-soft wiring-clear" id="wiring-clear" type="button">Clear wiring</button>
+          </div>
+
+          <div class="wiring-board" id="wiring-board">
+            <div class="wiring-column wiring-column-sources">
+              <h4>Your inputs</h4>
+              <div class="wiring-sources" id="wiring-sources"></div>
+            </div>
+            <svg class="wiring-cables" id="wiring-cables" aria-hidden="true"></svg>
+            <div class="wiring-column wiring-column-targets">
+              <h4>Game controls</h4>
+              <div class="wiring-targets" id="wiring-targets"></div>
+            </div>
+          </div>
+
+          <p class="wiring-status" id="wiring-status" role="status" aria-live="polite">
+            Choose an input, then choose a compatible game port.
+          </p>
+          <div class="wiring-maps-head">
+            <h4>Connections</h4>
+            <span>Adjust how raw readings become game controls.</span>
+          </div>
+          <p class="wiring-empty" id="wiring-empty">Nothing is wired yet.</p>
+          <div class="wiring-connections" id="wiring-connections"></div>
+        </section>
+
         <div class="game-shell">
           <div class="game-bar" aria-label="Game score">
             <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>

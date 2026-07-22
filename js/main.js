@@ -6,10 +6,20 @@ import { initVisualizer } from './visualizer.js';
 import { initDemo } from './demo.js';
 import { initBuilder } from './builder.js';
 import { initGame } from './game.js';
+import { createSignalStore } from './signal-store.js';
 import { initTabs } from './tabs.js';
+import { createWiringEngine } from './wiring-engine.js';
+import { initWiringUI } from './wiring-ui.js';
 
 // --- Tabs ------------------------------------------------------------------
 initTabs();
+
+// --- Shared controller state ------------------------------------------------
+const signalStore = createSignalStore();
+const gameActions = initGame();
+const wiringEngine = gameActions
+  ? createWiringEngine({ signalStore, actions: gameActions })
+  : null;
 
 // --- Controller code builder ------------------------------------------------
 initBuilder({
@@ -17,12 +27,13 @@ initBuilder({
   codeEl: document.getElementById('builder-code'),
   stepsEl: document.getElementById('builder-steps'),
   warnEl: document.getElementById('builder-warning'),
+  onChange: ({ channels }) => signalStore.setPlannedChannels(channels),
 });
 
 // --- Consumers -------------------------------------------------------------
-initVisualizer();
+initVisualizer(signalStore);
 initDemo();
-initGame();
+if (wiringEngine) initWiringUI({ signalStore, engine: wiringEngine });
 
 // --- Copy buttons on code blocks -------------------------------------------
 document.querySelectorAll('.code-copy').forEach((btn) => {
