@@ -4,3 +4,7 @@ Thumbs.db
 # Workspace cruft that must never land in the public site repo — the Stop hook
 # occasionally runs with cwd=site/ and drops a scratchpad-assets/.hook-log here.
 scratchpad-assets/
+
+node_modules/
+dist/
+*.log

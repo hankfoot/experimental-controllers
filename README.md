@@ -33,15 +33,13 @@ plain text:
 
 All meaning lives **in the browser**, not the micro:bit: what a channel triggers or steers is
 decided browser-side, so remapping never means reflashing. **Any channel name is valid on the
-wire** — the visualizer renders unknown channels with an auto-scaled plot, so you can invent your
-own in MakeCode. `js/channels.js` is just a prettiness registry (label, emoji, range hint) for the
-known ones.
+wire**. [`src/domain/channels.ts`](src/domain/channels.ts) only supplies labels and range hints for
+known channels; custom channels are discovered automatically.
 
 ## Local preview
 
-This site uses ES modules (`<script type="module">`), which browsers refuse to load over the
-`file://` protocol — double-clicking `index.html` will load the page but silently break every
-button, tab, and popover (no console error, they just do nothing). Serve it over HTTP instead:
+The app uses React, TypeScript, Mantine, and Vite. Serve it over HTTP instead of opening
+`index.html` directly.
 
 On NixOS (or any system with Nix and flakes enabled), enter the pinned development environment:
 
@@ -49,18 +47,21 @@ On NixOS (or any system with Nix and flakes enabled), enter the pinned developme
 nix develop path:.
 ```
 
-Then start the local server:
+Install the pinned npm dependencies and start Vite:
 
 ```
-python -m http.server 8000
+npm ci
+npm run dev
 ```
 
-then open `http://localhost:8000/`.
+Vite prints the local URL, normally `http://localhost:5173/`.
 
-Run the dependency-free JavaScript tests with:
+Run the unit tests, strict type checker, and production build with:
 
 ```
 npm test
+npm run typecheck
+npm run build
 ```
 
 ## Wiring inputs to the game
@@ -70,6 +71,18 @@ game port, then tune that connection's threshold, range, direction, or smoothing
 gestures work naturally as triggers; live sensor readings can drive continuous controls such as
 bird position, game speed, flap strength, and gravity. Wiring is stored locally in the browser and
 survives a refresh.
+
+On wide screens the wiring workbench and game stay side-by-side so changes can be tested
+immediately. On phones and tablets the game moves above the editor. Click/tap wiring works at every
+size, with drag-and-drop as a desktop shortcut.
+
+## Code structure
+
+- `src/domain/` contains the typed input bus, signal catalog, controller-code generator, and pure
+  wiring runtime.
+- `src/game/` contains the game simulation, canvas renderer, and small React adapter.
+- `src/components/` and `src/pages/` contain the Mantine UI.
+- `test/` covers wiring transforms, persistence fallbacks, signal-kind migration, and game rules.
 
 ## Controller code builder
 
