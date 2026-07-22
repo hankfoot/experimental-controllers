@@ -1,27 +1,399 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
-    <meta
-      name="description"
-      content="Build unusual micro:bit controllers and wire their inputs to a browser game."
-    />
-    <title>Experimental Game Controllers</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 46 46'><circle cx='20' cy='7' r='7.5' fill='%232f6bff'/><circle cx='33' cy='20' r='7.5' fill='%23e5484d'/><circle cx='20' cy='33' r='7.5' fill='%23f4b400'/><circle cx='7' cy='20' r='7.5' fill='%2334b24a'/></svg>"
-    />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Turn Anything into a Game Controller · Fidget Camp 2026</title>
+  <meta name="description" content="What if a pair of scissors, a stuffed animal, or your own voice could control a video game? A hands-on Fidget Camp 2026 workshop with Avi Romanoff and Hank Duhaime." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Diamond mark: X top (blue) · A right (red) · B bottom (yellow) · Y left (green) —
+       identical geometry reused for the favicon, navbar mark, and home hero mark so they match.
+       viewBox is padded (-3 -3 46 46) so the circles (which reach -0.5..40.5) aren't clipped. -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-3 -3 46 46'><circle cx='20' cy='7' r='7.5' fill='%232f6bff'/><circle cx='33' cy='20' r='7.5' fill='%23e5484d'/><circle cx='20' cy='33' r='7.5' fill='%23f4b400'/><circle cx='7' cy='20' r='7.5' fill='%2334b24a'/></svg>" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="wordmark" href="#home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
+        </span>
+        Experimental Game Controllers
+      </a>
+
+      <nav class="menu" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
+        <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Setup</button>
+        <button class="tab" role="tab" id="tab-controller" aria-controls="panel-controller" aria-selected="false" tabindex="-1">Controller</button>
+        <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
+      </nav>
+
+      <div class="topbar-right">
+        <!-- One control, two jobs: it shows connection status through its dot (grey idle,
+             yellow connecting, green + pulsing while data flows) AND opens the per-channel
+             visualizer popover. Its label reads "Live" until a board connects, then becomes
+             the device name (e.g. "BBC micro:bit [gapeg]") — so the board name itself is
+             the live-input button. The dot renders no channel data, so many simultaneous
+             streams can't make it glitch. -->
+        <button class="signal" id="signal-toggle" aria-controls="viz-pop" aria-expanded="false"
+                title="Live input" data-state="disconnected" data-active="false">
+          <span class="sig-dot" id="sig-activity" aria-hidden="true"></span>
+          <span class="sig-label" id="signal-label" role="status">Live</span>
+        </button>
+
+        <button id="connect-btn" class="btn">Connect</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Global visualizer popover -->
+  <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
+    <div class="viz-pop-head">
+      <strong>Live input</strong>
+      <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="live-rows" id="live-rows">
+      <p class="live-empty">No input yet — every channel your controller sends will get a row here.</p>
+    </div>
+
+    <div class="send">
+      <span class="send-label">Send test input <span class="send-sub">— no micro:bit needed</span></span>
+      <div class="send-controls">
+        <button id="demo-a" class="btn btn-soft" data-on="false">Hold <code>btna</code></button>
+        <button id="demo-shake" class="btn btn-soft">Send <code>shake</code></button>
+        <label class="demo-value">
+          <code>light</code>
+          <input id="demo-light" type="range" min="0" max="255" step="1" value="0" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div id="unsupported-banner" class="note wrap" hidden>
+    This project requires <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) to support Web Bluetooth.
+  </div>
+
+  <main class="wrap">
+
+    <!-- SCREEN: Home -->
+    <div class="panel screen" role="tabpanel" id="panel-home" aria-labelledby="tab-home">
+      <section class="home-hero">
+        <svg class="home-mark" aria-hidden="true" viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
+        <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
+        <h1>Turn Anything into a Game Controller</h1>
+        <p class="byline">
+          with Avi Romanoff &amp; Hank Duhaime
+          (<a href="https://www.instagram.com/schmardware/" target="_blank" rel="noopener">@schmardware</a>)
+        </p>
+        <p class="home-lede">
+          What if a pair of scissors, a stuffed animal, or your own voice could control a video
+          game? In this hands-on workshop, you'll work in teams to build delightfully ridiculous
+          new ways to play a classic video game.
+        </p>
+        <div class="home-actions">
+          <button class="btn btn-lg" data-tab-target="setup">Get started &rarr;</button>
+          <a class="btn btn-soft btn-lg" id="slides-link" href="https://docs.google.com/presentation/d/1aG_TYwTnf5ykXEjPiB-F1syKZAWkMWPhGqWRq1tN1R0/edit" target="_blank" rel="noopener">Workshop slides &#8599;</a>
+        </div>
+      </section>
+
+      <div class="home-cards">
+        <button class="home-card home-card--red" data-tab-target="setup">
+          <span class="home-card-num">1</span>
+          <h3>Setup</h3>
+          <p>Get your micro:bit talking to the browser over Bluetooth.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+        <button class="home-card home-card--yellow" data-tab-target="controller">
+          <span class="home-card-num">2</span>
+          <h3>Controller</h3>
+          <p>Design your controller and generate its code.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+        <button class="home-card home-card--green" data-tab-target="game">
+          <span class="home-card-num">3</span>
+          <h3>Game</h3>
+          <p>Connect your controller and play.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN: Set up -->
+    <div class="panel screen" role="tabpanel" id="panel-setup" aria-labelledby="tab-setup" hidden>
+      <section class="block" id="setup">
+        <div class="block-head"><h2>Set up your micro:bit</h2></div>
+        <p class="lead">
+          A one-time setup: open the ready-made project, paste in the starter code, flash it, find your
+          board's Bluetooth name, and connect. Takes a couple of minutes.
+        </p>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <h3>Grab a micro:bit v2</h3>
+              <p>
+                You'll need a <strong>micro:bit v2</strong> and a USB cable. A battery pack is handy once you unplug from the computer.
+              </p>
+              <figure class="shot">
+                <img src="assets/setup-microbit.png" alt="A micro:bit v2 board" />
+              </figure>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <h3>Set up MakeCode</h3>
+              <p>
+                Open the <a href="https://makecode.microbit.org/_JguX2x325Wva" target="_blank" rel="noopener">
+                blank starter project</a> in MakeCode, then click <strong>Edit Code</strong> in the top right. This file already has Bluetooth settings pre-configured, so make sure to work from here. You should see an interface like the one below.
+              </p>
+              <figure class="shot">
+                <img src="assets/setup-project.png" alt="The MakeCode editor with the starter project open, showing the micro:bit simulator on the left" />
+              </figure>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Copy the starter code</h3>
+              <p>
+                Switch to the <strong>JavaScript</strong> tab at the top of the page and paste this code into the editor:
+              </p>
+              <div class="code-block">
+                <button class="code-copy" type="button">Copy</button>
+                <pre><code>bluetooth.startUartService()
+let connected = false
+bluetooth.onBluetoothConnected(function () {
+    connected = true
+})
+bluetooth.onBluetoothDisconnected(function () {
+    connected = false
+})
+basic.forever(function () {
+    if (connected) {
+        basic.showIcon(IconNames.Yes)
+    } else {
+        basic.showString(control.deviceName())
+    }
+})</code></pre>
+              </div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <h3>Flash code to your micro:bit</h3>
+              <p>
+                Your micro:bit must be plugged into your computer to receive new code. Plug the micro:bit in over USB, then click <strong>Download</strong> in the bottom right of the MakeCode editor. If this is your first time downloading, follow the pop-up instructions to pair your board to your browser.
+              </p>
+              <figure class="shot">
+                <img src="assets/setup-pair.png" alt="The browser's pop-up for pairing the micro:bit during the first download" />
+              </figure>
+              <br/>
+              <p>
+                A red light on the back of the board will blink while it
+                copies code, then stop when it's done.
+              </p>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num step-num--opt" aria-hidden="true">+</span>
+            <div class="step-body">
+              <h3>Go cordless <span class="opt-badge">Optional</span></h3>
+              <p>
+                Once the code is flashed it stays on the board, so if you're done iterating you can unplug the USB cable and
+                run the micro:bit off a <strong>battery pack</strong> instead — handy for building a
+                controller you can pick up and move around.
+              </p>
+              <figure class="shot">
+                <img src="assets/setup-battery.jpg" alt="A micro:bit running off an attached battery pack" />
+              </figure>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">5</span>
+            <div class="step-body">
+              <h3>Find your micro:bit's name</h3>
+              <p>
+                Every micro:bit has a unique five-letter Bluetooth name and shows up as
+                <code>BBC micro:bit [·····]</code> (five letters of its own). Your board is now scrolling
+                that five-letter code across the LEDs — note yours so you can spot it in a room full of
+                boards.
+              </p>
+              <figure class="shot">
+                <video src="assets/setup-name.mp4" autoplay loop muted playsinline aria-label="The five-letter name scrolling across the micro:bit LEDs"></video>
+              </figure>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">6</span>
+            <div class="step-body">
+              <h3>Pair your micro:bit via Bluetooth</h3>
+              <p>
+                Click <strong>Connect</strong> in the top bar of this page. In the browser's Bluetooth list, pick the
+                <code>BBC micro:bit [·····]</code> that matches your five letters. The board will display a
+                checkmark, the status dot will turn green, and any inputs you've configured will appear on the <strong>Live</strong>
+                visualizer.
+              </p>
+              <br/>
+              <p>
+                <strong>FYI - if you refresh this page, you'll need to re-pair.</strong>
+              </p>
+              <figure class="shot">
+                <img src="assets/setup-chooser.png" alt="The browser's Bluetooth chooser listing BBC micro:bit devices" />
+              </figure>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="home"><span aria-hidden="true">&larr;</span> Home</button>
+        <button class="pager-btn pager-next" data-tab-target="controller">Controller <span aria-hidden="true">&rarr;</span></button>
+      </nav>
+    </div>
+
+    <!-- SCREEN: Starters -->
+    <div class="panel screen" role="tabpanel" id="panel-controller" aria-labelledby="tab-controller" hidden>
+      <section class="block" id="builder">
+        <div class="block-head"><h2>Design your controller</h2></div>
+        <p class="lead">
+          Pick the inputs your controller will use, copy the code it generates into MakeCode,
+          then build your object around them. No coding required.
+        </p>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <h3>Enable inputs</h3>
+              <p>
+                Check every input your controller will use — pins also pick <em>how</em> they're
+                wired. The code and build tips below update as you go.
+              </p>
+              <div id="builder-grid"><!-- populated by js/builder.js --></div>
+              <p class="builder-warn" id="builder-warning" role="status" hidden></p>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <h3>Copy your code</h3>
+              <p>
+                Paste this over <em>everything</em> in the <strong>JavaScript</strong> tab of your
+                MakeCode project (Setup, step&nbsp;3), then <strong>Download</strong> to flash it.
+                You can switch to Blocks view anytime to see and tweak it visually.
+              </p>
+              <div class="code-block code-block-wide">
+                <button class="code-copy" type="button">Copy</button>
+                <pre><code id="builder-code"></code></pre>
+              </div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Build your controller</h3>
+              <p>
+                Wire up each input and turn your object into a controller. Then hit
+                <strong>Connect</strong> in the top bar and open <strong>Live</strong> to check
+                every input responds.
+              </p>
+              <div id="builder-steps"><!-- populated by js/builder.js --></div>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Setup</button>
+        <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
+      </nav>
+    </div>
+
+    <!-- SCREEN: Game -->
+    <div class="panel screen" role="tabpanel" id="panel-game" aria-labelledby="tab-game" hidden>
+      <section class="block" id="game">
+        <div class="block-head"><h2>Play</h2></div>
+        <p class="lead">
+          Decide what each part of your controller should do, then fly through the gaps without
+          hitting a pipe. Space, tap, and the Flap button always remain available.
+        </p>
+        <section class="wiring-panel" aria-labelledby="wiring-title">
+          <div class="wiring-head">
+            <div>
+              <h3 id="wiring-title">Wire your controller</h3>
+              <p>Choose or drag an input to a compatible game port. Live values help you test every connection.</p>
+            </div>
+            <button class="btn btn-soft wiring-clear" id="wiring-clear" type="button">Clear wiring</button>
+          </div>
+
+          <div class="wiring-board" id="wiring-board">
+            <div class="wiring-column wiring-column-sources">
+              <h4>Your inputs</h4>
+              <div class="wiring-sources" id="wiring-sources"></div>
+            </div>
+            <svg class="wiring-cables" id="wiring-cables" aria-hidden="true"></svg>
+            <div class="wiring-column wiring-column-targets">
+              <h4>Game controls</h4>
+              <div class="wiring-targets" id="wiring-targets"></div>
+            </div>
+          </div>
+
+          <p class="wiring-status" id="wiring-status" role="status" aria-live="polite">
+            Choose an input, then choose a compatible game port.
+          </p>
+          <div class="wiring-maps-head">
+            <h4>Connections</h4>
+            <span>Adjust how raw readings become game controls.</span>
+          </div>
+          <p class="wiring-empty" id="wiring-empty">Nothing is wired yet.</p>
+          <div class="wiring-connections" id="wiring-connections"></div>
+        </section>
+
+        <div class="game-shell">
+          <div class="game-bar" aria-label="Game score">
+            <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
+            <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
+            <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
+          </div>
+          <canvas id="game-canvas" width="480" height="600" tabindex="0"
+                  aria-label="Flappy Bird game. Press Space or tap to flap."></canvas>
+          <div class="game-controls">
+            <button class="btn game-flap" id="game-flap" type="button">Flap</button>
+            <p id="game-status" role="status" aria-live="polite">Loading game…</p>
+          </div>
+        </div>
+      </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="controller"><span aria-hidden="true">&larr;</span> Controller</button>
+        <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
+      </nav>
+    </div>
+
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>Fidget Camp 2026 · Experimental Game Controllers</span>
+      <a href="https://github.com/hankfoot/experimental-game-controllers">GitHub</a>
+    </div>
+  </footer>
+
+  <script type="module" src="js/main.js"></script>
+</body>
 </html>

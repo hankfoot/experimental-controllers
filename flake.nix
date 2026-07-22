@@ -27,7 +27,7 @@
             ];
 
             shellHook = ''
-              echo "Development shell ready. Install: npm ci · Preview: npm run dev · Tests: npm test"
+              echo "Development shell ready. Preview: npm run dev · Tests: npm test"
             '';
           };
         }
