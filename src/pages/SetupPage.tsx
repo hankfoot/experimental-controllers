@@ -1,5 +1,10 @@
 import { Alert, Anchor, Button, Container, Group, Image, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import { IconArrowRight, IconBluetooth, IconExternalLink } from '@tabler/icons-react';
+import setupChooserImage from '../../assets/setup-chooser.png';
+import setupMicrobitImage from '../../assets/setup-microbit.png';
+import setupNameVideo from '../../assets/setup-name.mp4';
+import setupPairImage from '../../assets/setup-pair.png';
+import setupProjectImage from '../../assets/setup-project.png';
 import { CopyCode } from '../components/CopyCode';
 import type { PageId } from '../App';
 
@@ -54,7 +59,7 @@ export function SetupPage({ onNavigate }: SetupPageProps) {
         <Stack gap={44}>
           <SetupStep number={1} title="Grab a micro:bit v2">
             <Text>You’ll need a micro:bit v2 and USB cable. A battery pack is useful once you unplug.</Text>
-            <Image src="/assets/setup-microbit.png" alt="A micro:bit v2 board" radius="md" maw={500} />
+            <Image src={setupMicrobitImage} alt="A micro:bit v2 board" radius="md" maw={500} />
           </SetupStep>
           <SetupStep number={2} title="Open the ready-made MakeCode project">
             <Text>
@@ -64,7 +69,7 @@ export function SetupPage({ onNavigate }: SetupPageProps) {
               </Anchor>
               , choose <strong>Edit Code</strong>, then switch to the JavaScript tab.
             </Text>
-            <Image src="/assets/setup-project.png" alt="MakeCode starter project" radius="md" />
+            <Image src={setupProjectImage} alt="MakeCode starter project" radius="md" />
           </SetupStep>
           <SetupStep number={3} title="Paste the starter code">
             <Text>Replace the editor contents with this code. The Controller page will generate the full version later.</Text>
@@ -72,21 +77,21 @@ export function SetupPage({ onNavigate }: SetupPageProps) {
           </SetupStep>
           <SetupStep number={4} title="Flash it over USB">
             <Text>Click <strong>Download</strong> in MakeCode and follow the pairing prompt the first time.</Text>
-            <Image src="/assets/setup-pair.png" alt="Browser pairing prompt for a micro:bit" radius="md" />
+            <Image src={setupPairImage} alt="Browser pairing prompt for a micro:bit" radius="md" />
           </SetupStep>
           <SetupStep number={5} title="Find your board’s name">
             <Text>
               The LEDs scroll a unique five-letter name. Remember it so you can find the matching
               <code> BBC micro:bit [·····]</code> in a room full of boards.
             </Text>
-            <video className="setup-video" src="/assets/setup-name.mp4" autoPlay loop muted playsInline />
+            <video className="setup-video" src={setupNameVideo} autoPlay loop muted playsInline />
           </SetupStep>
           <SetupStep number={6} title="Connect from this site">
             <Text>
               Click <strong>Connect</strong> in the header and choose the device with your five letters.
               You’ll need to reconnect after refreshing the page.
             </Text>
-            <Image src="/assets/setup-chooser.png" alt="Bluetooth chooser listing micro:bits" radius="md" />
+            <Image src={setupChooserImage} alt="Bluetooth chooser listing micro:bits" radius="md" />
           </SetupStep>
         </Stack>
       </Paper>

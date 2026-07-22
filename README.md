@@ -64,6 +64,21 @@ npm run typecheck
 npm run build
 ```
 
+## GitHub Pages
+
+`npm run build` writes the complete static site to the tracked `docs/` directory. Before publishing:
+
+```
+npm run build
+git add docs
+git commit
+git push
+```
+
+Configure the repository's Pages source once as **Deploy from a branch**, using the `main` branch
+and `/docs` folder. The generated files use relative URLs, so they work at the repository's Pages
+subpath without a deployment workflow or a separate branch.
+
 ## Wiring inputs to the game
 
 The Game page contains a visual patch bay. Choose or drag a controller input onto a compatible
