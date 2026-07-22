@@ -124,7 +124,7 @@
 
     <!-- SCREEN: Set up -->
     <div class="panel screen" role="tabpanel" id="panel-setup" aria-labelledby="tab-setup" hidden>
-      <section class="block" id="setup">
+      <section class="block" id="setup-guide">
         <div class="block-head"><h2>Set up your micro:bit</h2></div>
         <p class="lead">
           A one-time setup: open the ready-made project, paste in the starter code, flash it, find your
@@ -326,13 +326,14 @@ basic.forever(function () {
 
     <!-- SCREEN: Game -->
     <div class="panel screen" role="tabpanel" id="panel-game" aria-labelledby="tab-game" hidden>
-      <section class="block" id="game">
+      <section class="block" id="game-playground">
         <div class="block-head"><h2>Play</h2></div>
         <p class="lead">
           Decide what each part of your controller should do, then fly through the gaps without
           hitting a pipe. Space, tap, and the Flap button always remain available.
         </p>
-        <section class="wiring-panel" aria-labelledby="wiring-title">
+        <div class="game-workspace">
+          <section class="wiring-panel" aria-labelledby="wiring-title">
           <div class="wiring-head">
             <div>
               <h3 id="wiring-title">Wire your controller</h3>
@@ -362,19 +363,20 @@ basic.forever(function () {
           </div>
           <p class="wiring-empty" id="wiring-empty">Nothing is wired yet.</p>
           <div class="wiring-connections" id="wiring-connections"></div>
-        </section>
+          </section>
 
-        <div class="game-shell">
-          <div class="game-bar" aria-label="Game score">
-            <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
-            <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
-            <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
-          </div>
-          <canvas id="game-canvas" width="480" height="600" tabindex="0"
-                  aria-label="Flappy Bird game. Press Space or tap to flap."></canvas>
-          <div class="game-controls">
-            <button class="btn game-flap" id="game-flap" type="button">Flap</button>
-            <p id="game-status" role="status" aria-live="polite">Loading game…</p>
+          <div class="game-shell">
+            <div class="game-bar" aria-label="Game score">
+              <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
+              <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
+              <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
+            </div>
+            <canvas id="game-canvas" width="480" height="600" tabindex="0"
+                    aria-label="Flappy Bird game. Press Space or tap to flap."></canvas>
+            <div class="game-controls">
+              <button class="btn game-flap" id="game-flap" type="button">Flap</button>
+              <p id="game-status" role="status" aria-live="polite">Loading game…</p>
+            </div>
           </div>
         </div>
       </section>

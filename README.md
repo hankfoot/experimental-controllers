@@ -64,6 +64,9 @@ then tune its threshold, range, direction, cooldown, or smoothing. Buttons and g
 triggers; sensor readings can drive bird position, game speed, flap strength, and gravity. Wiring
 is saved in browser storage and survives a refresh.
 
+On wide screens the wiring workbench and game sit side-by-side so changes can be tested
+immediately. When that pair cannot fit comfortably, the game stacks beneath the workbench.
+
 ## Code structure
 
 - `index.html` contains the four accessible page panels and static workshop content.
