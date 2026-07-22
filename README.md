@@ -42,6 +42,14 @@ This site uses ES modules (`<script type="module">`), which browsers refuse to l
 `file://` protocol — double-clicking `index.html` will load the page but silently break every
 button, tab, and popover (no console error, they just do nothing). Serve it over HTTP instead:
 
+On NixOS (or any system with Nix and flakes enabled), enter the pinned development environment:
+
+```
+nix develop path:.
+```
+
+Then start the local server:
+
 ```
 python -m http.server 8000
 ```
