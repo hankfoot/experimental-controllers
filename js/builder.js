@@ -290,9 +290,45 @@ export function generateCode(selected, pinModes) {
 const STREAM_BUSY = 5; // gentle heads-up
 const STREAM_HEAVY = 8; // stronger warning
 
+// Which inputs you picked is the shape of the physical thing you built, so it
+// has to outlast a refresh — the wiring on the Game screen is keyed to these
+// channels and looks gutted without them.
+const STORAGE_KEY = 'experimental-game-controllers:builder';
+
+const DEFAULT_PIN_MODES = { p0: 'touch', p1: 'touch', p2: 'touch' };
+
+function loadSelection() {
+  let saved = null;
+  try {
+    saved = JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) ?? 'null');
+  } catch {
+    saved = null;
+  }
+  const ids = new Set(INPUTS.map((input) => input.id));
+  const selected = new Set(
+    (Array.isArray(saved?.selected) ? saved.selected : []).filter((id) => ids.has(id)),
+  );
+  const pinModes = { ...DEFAULT_PIN_MODES };
+  for (const [pin, mode] of Object.entries(saved?.pinModes ?? {})) {
+    // A mode only survives if this build still offers it.
+    if (INPUTS.find((input) => input.id === pin)?.modes?.[mode]) pinModes[pin] = mode;
+  }
+  return { selected, pinModes };
+}
+
 export function initBuilder({ grid, codeEl, stepsEl, warnEl, onChange = () => {} }) {
-  const selected = new Set();
-  const pinModes = { p0: 'touch', p1: 'touch', p2: 'touch' };
+  const { selected, pinModes } = loadSelection();
+
+  function persist() {
+    try {
+      globalThis.localStorage?.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ selected: [...selected], pinModes }),
+      );
+    } catch {
+      // Persistence may be blocked; the picker still works for this session.
+    }
+  }
 
   function makeTile(input) {
     const tile = document.createElement('button');
@@ -360,6 +396,7 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl, onChange = () => {}
   }
 
   function renderOutput() {
+    persist();
     codeEl.textContent = generateCode(selected, pinModes);
     renderWarning();
 

@@ -1,9 +1,8 @@
 // Shared input bus.
 //
-// Everything that PRODUCES input (the real micro:bit over Bluetooth, or the test
-// controls) calls emitInput(). Everything that CONSUMES input (visualizer, game)
-// listens with onInput(). Consumers never care whether a message came from real
-// hardware or a demo button.
+// Everything that PRODUCES input (the micro:bit over Bluetooth) calls emitInput().
+// Everything that CONSUMES input (visualizer, game) listens with onInput().
+// Consumers never care where a message came from.
 
 const bus = new EventTarget();
 

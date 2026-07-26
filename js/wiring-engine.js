@@ -1,11 +1,14 @@
-// Coordinates persisted wire configuration, live signals, and game actions.
-// Transform math and storage validation live in focused, testable modules.
+// Coordinates persisted wire configuration, live signals, and the active game.
+// It knows nothing about any particular control: a wired value port becomes
+// actions.setValue(node, port, 0..1) and a wired trigger becomes
+// actions.fire(node, port). Each game interprets those however it likes.
 
-import { canConnect, GAME_TARGETS, targetPort } from './wiring-config.js';
+import { canConnect, findPort, isValueTransform, outputIdOf } from './wiring-config.js';
 import {
   createDefaultTransform,
   createRuntimeState,
   migrateTransformForSignal,
+  sampleGate,
   sampleRange,
   sampleTrigger,
 } from './wiring-runtime.js';
@@ -16,52 +19,43 @@ import {
   saveConnections,
 } from './wiring-storage.js';
 
-export { canConnect, GAME_TARGETS } from './wiring-config.js';
+export { canConnect } from './wiring-config.js';
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 const portKey = (node, port) => `${node}.${port}`;
 
-export function createWiringEngine({ signalStore, actions, storage } = {}) {
+export function createWiringEngine({ signalStore, actions, storage, game } = {}) {
   const resolvedStorage = storage === undefined ? browserStorage() : storage;
   const listeners = new Set();
   const runtime = new Map();
   const values = new Map();
-  let connections = loadConnections(resolvedStorage);
+  let targets = game?.targets ?? [];
+  let gameId = game?.id ?? '';
+  let connections = loadConnections(resolvedStorage, gameId, targets);
   let idCounter = 0;
-  let positionEnabled = null;
-
-  for (const target of GAME_TARGETS) {
-    for (const port of target.ports) {
-      if (port.type === 'value') values.set(portKey(target.id, port.id), port.defaultValue ?? 0);
-    }
-  }
 
   function notify(event) {
     listeners.forEach((listener) => listener(event));
   }
 
   function persist() {
-    saveConnections(resolvedStorage, connections);
+    saveConnections(resolvedStorage, gameId, connections);
   }
 
   function applyValue(node, port, value) {
     const normalized = clamp01(value);
     values.set(portKey(node, port), normalized);
-    if (node === 'speed') actions.setGameSpeed(normalized);
-    if (node === 'position') actions.setPosition(normalized);
-    if (node === 'gravity') actions.setGravity(normalized);
+    actions.setValue(node, port, normalized);
   }
 
   function syncDestinations() {
-    const nextPositionEnabled = connections.some(
-      ({ target }) => target.node === 'position' && target.port === 'y',
-    );
-    if (nextPositionEnabled !== positionEnabled) {
-      positionEnabled = nextPositionEnabled;
-      actions.setPositionEnabled(positionEnabled);
-    }
+    // Games use this to decide whether a control is under wire control or still
+    // following its manual fallback.
+    actions.setWiredPorts(new Set(
+      connections.map(({ target }) => portKey(target.node, target.port)),
+    ));
 
-    for (const target of GAME_TARGETS) {
+    for (const target of targets) {
       for (const port of target.ports) {
         if (port.type !== 'value') continue;
         const connected = connections.some((connection) => targetsEqual(connection.target, {
@@ -83,7 +77,7 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
     let changed = false;
     connections = connections.filter((connection) => {
       const signal = signalStore.get(connection.source);
-      const port = targetPort(connection.target);
+      const port = findPort(targets, connection.target);
       if (!signal || !port) return true;
       if (!canConnect(signal, port)) {
         runtime.delete(connection.id);
@@ -127,27 +121,23 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
   }
 
   function processValue(connection, signal) {
-    if (connection.transform.type !== 'range') return;
-    const output = sampleRange(signal.value ?? 0, connection.transform, runtimeState(connection.id));
+    const { transform } = connection;
+    if (!isValueTransform(transform.type)) return;
+    const sample = transform.type === 'gate' ? sampleGate : sampleRange;
+    const output = sample(signal.value ?? 0, transform, runtimeState(connection.id));
     applyValue(connection.target.node, connection.target.port, output);
     notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
   }
 
   function processTrigger(connection, signal) {
-    if (connection.transform.type === 'range') return;
+    if (isValueTransform(connection.transform.type)) return;
     const result = sampleTrigger(
       signal.value ?? 0,
       connection.transform,
       runtimeState(connection.id),
       Number.isFinite(signal.lastSeen) ? signal.lastSeen : performance.now(),
     );
-    if (result.fired) {
-      if (connection.target.node === 'flap') {
-        actions.flap({ magnitude: values.get(portKey('flap', 'magnitude')) });
-      } else if (connection.target.node === 'restart') {
-        actions.restartGame();
-      }
-    }
+    if (result.fired) actions.fire(connection.target.node, connection.target.port);
     notify({ type: 'activity', connectionId: connection.id, value: result.value, fired: result.fired });
   }
 
@@ -156,10 +146,10 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
     // Continuous values must use the current sample before a trigger wired to
     // the same source fires, regardless of connection insertion order.
     matching.forEach((connection) => {
-      if (targetPort(connection.target)?.type === 'value') processValue(connection, signal);
+      if (findPort(targets, connection.target)?.type === 'value') processValue(connection, signal);
     });
     matching.forEach((connection) => {
-      if (targetPort(connection.target)?.type === 'trigger') processTrigger(connection, signal);
+      if (findPort(targets, connection.target)?.type === 'trigger') processTrigger(connection, signal);
     });
   }
 
@@ -183,16 +173,42 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
   });
 
   return {
-    targets: GAME_TARGETS,
+    get targets() {
+      return targets;
+    },
+    get gameId() {
+      return gameId;
+    },
+    // Swaps in another game's ports and its own saved connections. Nothing is
+    // carried across — each game's wiring is independent.
+    setGame(next) {
+      if (!next || next.id === gameId) return;
+      gameId = next.id;
+      targets = next.targets ?? [];
+      runtime.clear();
+      values.clear();
+      connections = loadConnections(resolvedStorage, gameId, targets);
+      syncSources();
+      reconcileSourceKinds();
+      syncDestinations();
+      notify({ type: 'connections' });
+    },
     listConnections: () => structuredClone(connections),
-    addConnection(source, target) {
+    // `outputId` picks which of the source's jacks drives the port — it only
+    // decides the starting transform, since the transform is what the output is
+    // read back from afterwards. Omitting it takes the port's first fit.
+    addConnection(source, target, outputId) {
       const signal = signalStore.get(source);
-      const port = targetPort(target);
+      const port = findPort(targets, target);
       if (!canConnect(signal, port)) return null;
 
-      const existing = connections.find(
-        (connection) => connection.source === source && targetsEqual(connection.target, target),
-      );
+      // Re-picking the same jack is a no-op, but swapping a port from one jack
+      // to another must fall through and rebuild the transform.
+      const existing = connections.find((connection) =>
+        connection.source === source
+        && targetsEqual(connection.target, target)
+        && (outputId === undefined
+          || outputIdOf(signal, port, connection.transform) === outputId));
       if (existing) return structuredClone(existing);
 
       if (port.type === 'value') {
@@ -207,7 +223,7 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
         source,
         sourceKind: signal.kind,
         target: { ...target },
-        transform: createDefaultTransform(signal, port),
+        transform: createDefaultTransform(signal, port, outputId),
       };
       connections.push(connection);
       connectionsChanged();
@@ -216,9 +232,9 @@ export function createWiringEngine({ signalStore, actions, storage } = {}) {
     updateConnection(id, patch) {
       const connection = connections.find((item) => item.id === id);
       if (!connection || !patch?.transform) return;
-      const port = targetPort(connection.target);
+      const port = findPort(targets, connection.target);
       const transform = normalizeTransform({ ...connection.transform, ...patch.transform });
-      if (!port || !transform || (port.type === 'value') !== (transform.type === 'range')) return;
+      if (!port || !transform || (port.type === 'value') !== isValueTransform(transform.type)) return;
       connection.transform = transform;
       runtime.delete(id);
       connectionsChanged();

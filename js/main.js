@@ -3,7 +3,6 @@
 import { onStatus, onInput } from './bus.js';
 import { connect, disconnect, isSupported } from './bluetooth.js';
 import { initVisualizer } from './visualizer.js';
-import { initDemo } from './demo.js';
 import { initBuilder } from './builder.js';
 import { initGame } from './game.js';
 import { createSignalStore } from './signal-store.js';
@@ -16,10 +15,16 @@ initTabs();
 
 // --- Shared controller state ------------------------------------------------
 const signalStore = createSignalStore();
-const gameActions = initGame();
-const wiringEngine = gameActions
-  ? createWiringEngine({ signalStore, actions: gameActions })
+const gameHost = initGame();
+const wiringEngine = gameHost
+  ? createWiringEngine({
+    signalStore,
+    actions: gameHost.actions,
+    game: gameHost.activeGame(),
+  })
   : null;
+// Each game keeps its own independent wiring, so the board swaps with the game.
+if (wiringEngine) gameHost.onGameChange((game) => wiringEngine.setGame(game));
 
 // --- Controller code builder ------------------------------------------------
 initBuilder({
@@ -32,7 +37,6 @@ initBuilder({
 
 // --- Consumers -------------------------------------------------------------
 initVisualizer(signalStore);
-initDemo();
 if (wiringEngine) initWiringUI({ signalStore, engine: wiringEngine });
 
 // --- Copy buttons on code blocks -------------------------------------------
@@ -67,10 +71,10 @@ function openViz(open) {
   signalToggle.setAttribute('aria-expanded', String(open));
 }
 
-// The chip pulses while data is flowing (real or demo), then settles after a
-// short idle. Generic on/off — it never reflects any specific channel, so many
-// simultaneous streams can't make it thrash. `data-state` (set below) colors
-// the dot (grey / yellow / green); `data-active` drives the pulse.
+// The chip pulses while data is flowing, then settles after a short idle.
+// Generic on/off — it never reflects any specific channel, so many simultaneous
+// streams can't make it thrash. `data-state` (set below) colors the dot
+// (grey / yellow / green); `data-active` drives the pulse.
 let idleTimer = null;
 onInput(() => {
   signalToggle.dataset.active = 'true';
@@ -90,38 +94,35 @@ document.addEventListener('click', (e) => {
 });
 
 // --- Connection button + status --------------------------------------------
-// The signal button doubles as the status display: its dot reflects the state,
-// and once connected its label becomes the device name — so the board name
-// itself is the live-input button. The Connect/Disconnect action stays separate.
+// The top bar shows exactly one control: Connect until a board is paired, then
+// the board's own name — a button whose only job is opening the live-input
+// popover. Disconnect lives inside that popover.
 const connectBtn = document.getElementById('connect-btn');
+const disconnectBtn = document.getElementById('disconnect-btn');
 const signalLabel = document.getElementById('signal-label');
 
-let connected = false;
-
 onStatus(({ state, message }) => {
-  connected = state === 'connected';
-  signalToggle.dataset.state = state; // colors the dot: grey / yellow / green
+  // Whichever control the user just pressed is the one about to disappear, so
+  // note it now and hand focus to its replacement rather than dropping it.
+  const wasFocused = document.activeElement;
+  const connected = state === 'connected';
 
-  if (state === 'connecting') {
-    signalLabel.textContent = 'Connecting…';
-    connectBtn.disabled = true;
-    connectBtn.textContent = 'Connecting…';
-  } else if (state === 'connected') {
+  signalToggle.dataset.state = state; // colors the dot: grey / yellow / green
+  signalToggle.hidden = !connected;
+  connectBtn.hidden = connected;
+  connectBtn.disabled = state === 'connecting';
+  connectBtn.textContent = state === 'connecting' ? 'Connecting…' : 'Connect';
+
+  if (connected) {
     signalLabel.textContent = message || 'Connected'; // e.g. "BBC micro:bit [gapeg]"
-    connectBtn.disabled = false;
-    connectBtn.textContent = 'Disconnect';
+    if (wasFocused === connectBtn) signalToggle.focus();
   } else {
-    signalLabel.textContent = 'Live';
-    connectBtn.disabled = false;
-    connectBtn.textContent = 'Connect';
+    openViz(false); // no board, nothing live to show
+    if (wasFocused === disconnectBtn) connectBtn.focus();
   }
 });
 
 connectBtn.addEventListener('click', async () => {
-  if (connected) {
-    disconnect();
-    return;
-  }
   try {
     await connect();
   } catch (err) {
@@ -129,3 +130,5 @@ connectBtn.addEventListener('click', async () => {
     console.debug('connect cancelled or failed:', err?.message);
   }
 });
+
+disconnectBtn.addEventListener('click', () => disconnect());

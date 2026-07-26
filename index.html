@@ -27,21 +27,23 @@
       <nav class="menu" role="tablist" aria-label="Sections">
         <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
         <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Setup</button>
-        <button class="tab" role="tab" id="tab-controller" aria-controls="panel-controller" aria-selected="false" tabindex="-1">Controller</button>
+        <button class="tab" role="tab" id="tab-sensing" aria-controls="panel-sensing" aria-selected="false" tabindex="-1">Sensing</button>
+        <button class="tab" role="tab" id="tab-config" aria-controls="panel-config" aria-selected="false" tabindex="-1">Config</button>
+        <button class="tab" role="tab" id="tab-customize" aria-controls="panel-customize" aria-selected="false" tabindex="-1">Customize</button>
         <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
       </nav>
 
       <div class="topbar-right">
-        <!-- One control, two jobs: it shows connection status through its dot (grey idle,
-             yellow connecting, green + pulsing while data flows) AND opens the per-channel
-             visualizer popover. Its label reads "Live" until a board connects, then becomes
-             the device name (e.g. "BBC micro:bit [gapeg]") — so the board name itself is
-             the live-input button. The dot renders no channel data, so many simultaneous
-             streams can't make it glitch. -->
+        <!-- Two states, one slot. With no board paired this is the Connect button; once a
+             board connects it's replaced by a single button carrying that board's name
+             (e.g. "BBC micro:bit [gapeg]"), and clicking the name opens the per-channel
+             live-input popover. Disconnect lives in that popover, so a connected board
+             shows nothing up here but its own name. The dot pulses while data flows but
+             renders no channel data, so many simultaneous streams can't make it glitch. -->
         <button class="signal" id="signal-toggle" aria-controls="viz-pop" aria-expanded="false"
-                title="Live input" data-state="disconnected" data-active="false">
-          <span class="sig-dot" id="sig-activity" aria-hidden="true"></span>
-          <span class="sig-label" id="signal-label" role="status">Live</span>
+                title="Live input" data-state="disconnected" data-active="false" hidden>
+          <span class="sig-dot" aria-hidden="true"></span>
+          <span class="sig-label" id="signal-label" role="status"></span>
         </button>
 
         <button id="connect-btn" class="btn">Connect</button>
@@ -53,23 +55,12 @@
   <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
     <div class="viz-pop-head">
       <strong>Live input</strong>
+      <button id="disconnect-btn" class="btn btn-soft">Disconnect</button>
       <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
 
     <div class="live-rows" id="live-rows">
       <p class="live-empty">No input yet — every channel your controller sends will get a row here.</p>
-    </div>
-
-    <div class="send">
-      <span class="send-label">Send test input <span class="send-sub">— no micro:bit needed</span></span>
-      <div class="send-controls">
-        <button id="demo-a" class="btn btn-soft" data-on="false">Hold <code>btna</code></button>
-        <button id="demo-shake" class="btn btn-soft">Send <code>shake</code></button>
-        <label class="demo-value">
-          <code>light</code>
-          <input id="demo-light" type="range" min="0" max="255" step="1" value="0" />
-        </label>
-      </div>
     </div>
   </div>
 
@@ -107,16 +98,22 @@
           <p>Get your micro:bit talking to the browser over Bluetooth.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
-        <button class="home-card home-card--yellow" data-tab-target="controller">
+        <button class="home-card home-card--yellow" data-tab-target="sensing">
           <span class="home-card-num">2</span>
-          <h3>Controller</h3>
+          <h3>Sensing</h3>
           <p>Design your controller and generate its code.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
-        <button class="home-card home-card--green" data-tab-target="game">
+        <button class="home-card home-card--green" data-tab-target="config">
           <span class="home-card-num">3</span>
+          <h3>Config</h3>
+          <p>Pick a control scheme and wire your inputs to it.</p>
+          <span class="home-card-go">Open &rarr;</span>
+        </button>
+        <button class="home-card home-card--gray" data-tab-target="game">
+          <span class="home-card-num">4</span>
           <h3>Game</h3>
-          <p>Connect your controller and play.</p>
+          <p>Play the sidescroller with the controller you built.</p>
           <span class="home-card-go">Open &rarr;</span>
         </button>
       </div>
@@ -243,8 +240,8 @@ basic.forever(function () {
               <p>
                 Click <strong>Connect</strong> in the top bar of this page. In the browser's Bluetooth list, pick the
                 <code>BBC micro:bit [·····]</code> that matches your five letters. The board will display a
-                checkmark, the status dot will turn green, and any inputs you've configured will appear on the <strong>Live</strong>
-                visualizer.
+                checkmark, and the top bar will swap the Connect button for your board's name — click that
+                name anytime to watch every input you've configured come in live.
               </p>
               <br/>
               <p>
@@ -260,12 +257,12 @@ basic.forever(function () {
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="home"><span aria-hidden="true">&larr;</span> Home</button>
-        <button class="pager-btn pager-next" data-tab-target="controller">Controller <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="sensing">Sensing <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
     <!-- SCREEN: Starters -->
-    <div class="panel screen" role="tabpanel" id="panel-controller" aria-labelledby="tab-controller" hidden>
+    <div class="panel screen" role="tabpanel" id="panel-sensing" aria-labelledby="tab-sensing" hidden>
       <section class="block" id="builder">
         <div class="block-head"><h2>Design your controller</h2></div>
         <p class="lead">
@@ -309,7 +306,7 @@ basic.forever(function () {
               <h3>Build your controller</h3>
               <p>
                 Wire up each input and turn your object into a controller. Then hit
-                <strong>Connect</strong> in the top bar and open <strong>Live</strong> to check
+                <strong>Connect</strong> in the top bar and click your board's name to check
                 every input responds.
               </p>
               <div id="builder-steps"><!-- populated by js/builder.js --></div>
@@ -320,24 +317,32 @@ basic.forever(function () {
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Setup</button>
-        <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="config">Config <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
-    <!-- SCREEN: Game -->
-    <div class="panel screen" role="tabpanel" id="panel-game" aria-labelledby="tab-game" hidden>
-      <section class="block" id="game-playground">
-        <div class="block-head"><h2>Play</h2></div>
+    <!-- SCREEN: Config -->
+    <div class="panel screen" role="tabpanel" id="panel-config" aria-labelledby="tab-config" hidden>
+      <section class="block" id="game-config">
+        <div class="block-head"><h2>Configure your controls</h2></div>
         <p class="lead">
-          Decide what each part of your controller should do, then fly through the gaps without
-          hitting a pipe. Space, tap, and the Flap button always remain available.
+          One sidescroller, four ways to fly it — a single trigger, a held trigger, two buttons,
+          or one analog dial. Pick a scheme, and its controls are what your inputs get wired to.
+          Each scheme keeps its own wiring, and the keys and on-screen buttons always remain available.
         </p>
-        <div class="game-workspace">
-          <section class="wiring-panel" aria-labelledby="wiring-title">
+
+        <div class="game-picker" role="group" aria-label="Choose a control scheme" id="game-picker"></div>
+        <p class="game-tagline" id="game-tagline"></p>
+
+        <section class="wiring-panel" aria-labelledby="wiring-title">
           <div class="wiring-head">
             <div>
               <h3 id="wiring-title">Wire your controller</h3>
-              <p>Choose or drag an input to a compatible game port. Live values help you test every connection.</p>
+              <p>
+                Each input lists what it can do. A <b class="wiring-term" data-type="value">Level</b>
+                port takes a whole range or a held on/off;
+                a <b class="wiring-term" data-type="trigger">Trigger</b> port fires at an instant.
+              </p>
             </div>
             <button class="btn btn-soft wiring-clear" id="wiring-clear" type="button">Clear wiring</button>
           </div>
@@ -355,34 +360,68 @@ basic.forever(function () {
           </div>
 
           <p class="wiring-status" id="wiring-status" role="status" aria-live="polite">
-            Choose an input, then choose a compatible game port.
+            Choose an output, then a game port of the same type.
           </p>
-          <div class="wiring-maps-head">
-            <h4>Connections</h4>
-            <span>Adjust how raw readings become game controls.</span>
-          </div>
-          <p class="wiring-empty" id="wiring-empty">Nothing is wired yet.</p>
-          <div class="wiring-connections" id="wiring-connections"></div>
-          </section>
+        </section>
+      </section>
 
-          <div class="game-shell">
-            <div class="game-bar" aria-label="Game score">
-              <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
-              <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
-              <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
-            </div>
-            <canvas id="game-canvas" width="480" height="600" tabindex="0"
-                    aria-label="Flappy Bird game. Press Space or tap to flap."></canvas>
-            <div class="game-controls">
-              <button class="btn game-flap" id="game-flap" type="button">Flap</button>
-              <p id="game-status" role="status" aria-live="polite">Loading game…</p>
-            </div>
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="sensing"><span aria-hidden="true">&larr;</span> Sensing</button>
+        <button class="pager-btn pager-next" data-tab-target="customize">Customize <span aria-hidden="true">&rarr;</span></button>
+      </nav>
+    </div>
+
+    <!-- SCREEN: Customize -->
+    <div class="panel screen" role="tabpanel" id="panel-customize" aria-labelledby="tab-customize" hidden>
+      <section class="block" id="game-customize">
+        <div class="block-head"><h2>Customize your game</h2></div>
+        <p class="lead">
+          Config decides <em>how</em> you fly. This is where you'll decide what the flying looks
+          like — the craft, the world it scrolls through, and how hard it pushes back.
+        </p>
+
+        <div class="placeholder">
+          <p class="placeholder-title">Nothing to customize yet</p>
+          <p>
+            Coming soon. Until then, head to the game and play with the scheme you wired up.
+          </p>
+        </div>
+      </section>
+
+      <nav class="pager">
+        <button class="pager-btn" data-tab-target="config"><span aria-hidden="true">&larr;</span> Config</button>
+        <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
+      </nav>
+    </div>
+
+    <!-- SCREEN: Game -->
+    <div class="panel screen" role="tabpanel" id="panel-game" aria-labelledby="tab-game" hidden>
+      <section class="block" id="game-playground">
+        <div class="block-head"><h2>Play</h2></div>
+        <p class="lead">
+          Fly the craft through the gaps. It answers to whatever you wired up in
+          <button class="link-btn" type="button" data-tab-target="config">Config</button>,
+          and to the keys and buttons below either way.
+        </p>
+
+        <div class="game-shell">
+          <div class="game-bar" aria-label="Game score">
+            <div class="game-stat"><span>Scheme</span><strong id="game-scheme">—</strong></div>
+            <div class="game-stat"><span>Score</span><strong id="game-score">0</strong></div>
+            <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
+            <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
+          </div>
+          <canvas id="game-canvas" width="480" height="600" tabindex="0"
+                  aria-label="Game canvas"></canvas>
+          <div class="game-controls">
+            <div class="game-buttons" id="game-buttons"></div>
+            <p id="game-status" role="status" aria-live="polite">Loading game…</p>
           </div>
         </div>
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="controller"><span aria-hidden="true">&larr;</span> Controller</button>
+        <button class="pager-btn" data-tab-target="customize"><span aria-hidden="true">&larr;</span> Customize</button>
         <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
       </nav>
     </div>

@@ -21,7 +21,7 @@ export function initTabs() {
   }
 
   function activateKey(key, opts) {
-    const tab = document.getElementById('tab-' + (key === 'starters' ? 'controller' : key));
+    const tab = document.getElementById('tab-' + (key === 'starters' ? 'sensing' : key));
     if (tab) activate(tab, opts);
     return !!tab;
   }
@@ -42,7 +42,7 @@ export function initTabs() {
     const a = e.target.closest('a[href^="#"], [data-tab-target]');
     if (!a) return;
 
-    const explicit = a.dataset.tabTarget; // e.g. "play" for the demo-mode link
+    const explicit = a.dataset.tabTarget; // e.g. "setup" for the "Get started" button
     const href = a.getAttribute('href') || '';
     const target = explicit
       ? document.getElementById('panel-' + explicit)
