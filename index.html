@@ -34,16 +34,16 @@
       </nav>
 
       <div class="topbar-right">
-        <!-- Two states, one slot. With no board paired this is the Connect button; once a
-             board connects it's replaced by a single button carrying that board's name
-             (e.g. "BBC micro:bit [gapeg]"), and clicking the name opens the per-channel
-             live-input popover. Disconnect lives in that popover, so a connected board
-             shows nothing up here but its own name. The dot pulses while data flows but
-             renders no channel data, so many simultaneous streams can't make it glitch. -->
+        <!-- Always visible, always opens the per-channel live-input popover. The label
+             carries the connection state: "Not Connected" until a board pairs, then that
+             board's name (e.g. "BBC micro:bit [gapeg]"). Connect sits beside it and drops
+             out once paired; Disconnect lives inside the popover. The dot pulses while
+             data flows but renders no channel data, so many simultaneous streams can't
+             make it glitch. -->
         <button class="signal" id="signal-toggle" aria-controls="viz-pop" aria-expanded="false"
-                title="Live input" data-state="disconnected" data-active="false" hidden>
+                title="Live input" data-state="disconnected" data-active="false">
           <span class="sig-dot" aria-hidden="true"></span>
-          <span class="sig-label" id="signal-label" role="status"></span>
+          <span class="sig-label" id="signal-label" role="status">Not Connected</span>
         </button>
 
         <button id="connect-btn" class="btn">Connect</button>
@@ -55,7 +55,7 @@
   <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
     <div class="viz-pop-head">
       <strong>Live input</strong>
-      <button id="disconnect-btn" class="btn btn-soft">Disconnect</button>
+      <button id="disconnect-btn" class="btn btn-soft" hidden>Disconnect</button>
       <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
 
@@ -326,22 +326,20 @@ basic.forever(function () {
       <section class="block" id="game-config">
         <div class="block-head"><h2>Configure your controls</h2></div>
         <p class="lead">
-          One sidescroller, four ways to fly it — a single trigger, a held trigger, two buttons,
+          One sidescroller, three ways to fly it — a single trigger, one or two held inputs,
           or one analog dial. Pick a scheme, and its controls are what your inputs get wired to.
           Each scheme keeps its own wiring, and the keys and on-screen buttons always remain available.
         </p>
-
-        <div class="game-picker" role="group" aria-label="Choose a control scheme" id="game-picker"></div>
-        <p class="game-tagline" id="game-tagline"></p>
 
         <section class="wiring-panel" aria-labelledby="wiring-title">
           <div class="wiring-head">
             <div>
               <h3 id="wiring-title">Wire your controller</h3>
               <p>
-                Each input lists what it can do. A <b class="wiring-term" data-type="value">Level</b>
-                port takes a whole range or a held on/off;
-                a <b class="wiring-term" data-type="trigger">Trigger</b> port fires at an instant.
+                Each input lists what it can do. A <b class="wiring-term">Level</b>
+                port takes a whole range; a <b class="wiring-term">Hold</b> port takes
+                an on/off that stays on while something is true; a
+                <b class="wiring-term">Trigger</b> port fires at an instant.
               </p>
             </div>
             <button class="btn btn-soft wiring-clear" id="wiring-clear" type="button">Clear wiring</button>
@@ -355,13 +353,21 @@ basic.forever(function () {
             <svg class="wiring-cables" id="wiring-cables" aria-hidden="true"></svg>
             <div class="wiring-column wiring-column-targets">
               <h4>Game controls</h4>
+              <!-- The scheme decides what these controls are, so choosing one
+                   is a setting of the first control rather than a thing beside
+                   it: the wiring board moves this block into that card. -->
+              <div class="game-picker" id="game-picker-block">
+                <label class="game-picker-label" for="game-picker">Movement</label>
+                <select id="game-picker"></select>
+                <p class="game-tagline" id="game-tagline"></p>
+              </div>
               <div class="wiring-targets" id="wiring-targets"></div>
             </div>
           </div>
 
-          <p class="wiring-status" id="wiring-status" role="status" aria-live="polite">
-            Choose an output, then a game port of the same type.
-          </p>
+          <!-- Only speaks up when a calibration has something to report; the
+               wiring itself is explained by the board rather than by a caption. -->
+          <p class="wiring-status" id="wiring-status" role="status" aria-live="polite"></p>
         </section>
       </section>
 

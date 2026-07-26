@@ -148,29 +148,17 @@ export function initGame() {
     }
   }
 
+  // One choice out of four, and picking it rewrites the controls listed under
+  // it — so it reads as the heading of that list rather than a gallery of cards
+  // competing with the board for attention.
   function renderPicker() {
     ui.picker.replaceChildren();
     for (const game of GAMES) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'game-pick';
-      button.dataset.game = game.id;
-      button.setAttribute('aria-pressed', String(game.id === current?.game.id));
-
-      const emoji = document.createElement('span');
-      emoji.className = 'game-pick-emoji';
-      emoji.setAttribute('aria-hidden', 'true');
-      emoji.textContent = game.emoji;
-      const label = document.createElement('strong');
-      label.textContent = game.label;
-      const scheme = document.createElement('small');
-      scheme.textContent = game.scheme;
-
-      const text = document.createElement('span');
-      text.className = 'game-pick-text';
-      text.append(label, scheme);
-      button.append(emoji, text);
-      ui.picker.appendChild(button);
+      const option = document.createElement('option');
+      option.value = game.id;
+      option.textContent = `${game.emoji}  ${game.label} · ${game.scheme}`;
+      option.selected = game.id === current?.game.id;
+      ui.picker.appendChild(option);
     }
   }
 
@@ -261,10 +249,7 @@ export function initGame() {
     current.engine.reset();
   });
 
-  ui.picker.addEventListener('click', (event) => {
-    const button = event.target.closest('.game-pick');
-    if (button) selectGame(button.dataset.game);
-  });
+  ui.picker.addEventListener('change', (event) => selectGame(event.target.value));
 
   window.addEventListener('resize', resize);
 
@@ -336,6 +321,8 @@ export function initGame() {
       setValue: (node, port, value) => current?.engine.setValue(node, port, value),
       fire: (node, port) => current?.engine.fire(node, port),
       setWiredPorts: (ports) => current?.engine.setWiredPorts(ports),
+      setControlOptions: (node, port, options) =>
+        current?.engine.setControlOptions?.(node, port, options),
     },
     activeGame: () => current?.game ?? null,
     selectGame,

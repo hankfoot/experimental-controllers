@@ -1,22 +1,34 @@
 // Coordinates persisted wire configuration, live signals, and the active game.
-// It knows nothing about any particular control: a wired value port becomes
-// actions.setValue(node, port, 0..1) and a wired trigger becomes
-// actions.fire(node, port). Each game interprets those however it likes.
+// It knows nothing about any particular control: a wired level or hold port
+// becomes actions.setValue(node, port, 0..1) — a hold simply only ever sends the
+// two ends — and a wired trigger becomes actions.fire(node, port). Each game
+// interprets those however it likes.
 
-import { canConnect, findPort, isValueTransform, outputIdOf } from './wiring-config.js';
 import {
+  canConnect,
+  findPort,
+  isValuePort,
+  outputIdOf,
+  portTypeForTransform,
+} from './wiring-config.js';
+import {
+  createChannelFilter,
   createDefaultTransform,
   createRuntimeState,
+  filterBinary,
   migrateTransformForSignal,
   sampleGate,
+  sampleHold,
   sampleRange,
   sampleTrigger,
 } from './wiring-runtime.js';
 import {
   browserStorage,
   loadConnections,
+  loadPortOptions,
   normalizeTransform,
   saveConnections,
+  savePortOptions,
 } from './wiring-storage.js';
 
 export { canConnect } from './wiring-config.js';
@@ -28,14 +40,42 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
   const resolvedStorage = storage === undefined ? browserStorage() : storage;
   const listeners = new Set();
   const runtime = new Map();
-  const values = new Map();
+  // Keyed by channel, not by wire: a dropped tick is a fact about the contact,
+  // so two controls wired to the same pad must agree on whether it is held.
+  const filters = new Map();
   let targets = game?.targets ?? [];
   let gameId = game?.id ?? '';
   let connections = loadConnections(resolvedStorage, gameId, targets);
+  let chosen = loadPortOptions(resolvedStorage, gameId);
   let idCounter = 0;
 
   function notify(event) {
     listeners.forEach((listener) => listener(event));
+  }
+
+  // --- Control options ------------------------------------------------------
+  // What a control does with what it's given. The game declares the choices on
+  // its own ports; the engine only remembers which one is picked and hands the
+  // resolved set back, so the game never has to read storage itself.
+  function optionsFor(node, port) {
+    const definition = findPort(targets, { node, port });
+    const picked = chosen[portKey(node, port)] ?? {};
+    const resolved = {};
+    for (const option of definition?.options ?? []) {
+      const value = picked[option.id];
+      const known = option.choices.some(([id]) => id === value);
+      resolved[option.id] = known ? value : option.value;
+    }
+    return resolved;
+  }
+
+  function publishOptions() {
+    for (const target of targets) {
+      for (const port of target.ports) {
+        if (!port.options?.length) continue;
+        actions.setControlOptions?.(target.id, port.id, optionsFor(target.id, port.id));
+      }
+    }
   }
 
   function persist() {
@@ -43,9 +83,7 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
   }
 
   function applyValue(node, port, value) {
-    const normalized = clamp01(value);
-    values.set(portKey(node, port), normalized);
-    actions.setValue(node, port, normalized);
+    actions.setValue(node, port, clamp01(value));
   }
 
   function syncDestinations() {
@@ -57,7 +95,9 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
 
     for (const target of targets) {
       for (const port of target.ports) {
-        if (port.type !== 'value') continue;
+        // Only a port that carries a running value has one to fall back to: a
+        // trigger is a moment, and a setting is never driven by anything.
+        if (!isValuePort(port.type)) continue;
         const connected = connections.some((connection) => targetsEqual(connection.target, {
           node: target.id,
           port: port.id,
@@ -120,19 +160,21 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
     return runtime.get(id);
   }
 
-  function processValue(connection, signal) {
+  const SAMPLERS = { gate: sampleGate, hold: sampleHold, range: sampleRange };
+
+  function processValue(connection, value) {
     const { transform } = connection;
-    if (!isValueTransform(transform.type)) return;
-    const sample = transform.type === 'gate' ? sampleGate : sampleRange;
-    const output = sample(signal.value ?? 0, transform, runtimeState(connection.id));
+    const sample = SAMPLERS[transform.type];
+    if (!sample) return;
+    const output = sample(value, transform, runtimeState(connection.id));
     applyValue(connection.target.node, connection.target.port, output);
     notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
   }
 
-  function processTrigger(connection, signal) {
-    if (isValueTransform(connection.transform.type)) return;
+  function processTrigger(connection, signal, value) {
+    if (portTypeForTransform(connection.transform.type) !== 'trigger') return;
     const result = sampleTrigger(
-      signal.value ?? 0,
+      value,
       connection.transform,
       runtimeState(connection.id),
       Number.isFinite(signal.lastSeen) ? signal.lastSeen : performance.now(),
@@ -141,15 +183,31 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
     notify({ type: 'activity', connectionId: connection.id, value: result.value, fired: result.fired });
   }
 
+  // What the wiring acts on, which is not always what arrived. An on/off contact
+  // gets its dropped ticks filled in before any wire sees it; a reading and a
+  // gesture are passed through untouched — a reading has its own smoothing and
+  // dead band, and a gesture is a single 1 with no second tick to confirm it.
+  // The signal store keeps the raw value either way, so the plots stay honest
+  // about what the board actually sent.
+  function actedValue(signal) {
+    const raw = signal.value ?? 0;
+    if (signal.kind !== 'binary') return raw;
+    if (!filters.has(signal.channel)) filters.set(signal.channel, createChannelFilter());
+    return filterBinary(raw, filters.get(signal.channel));
+  }
+
   function processSignal(signal) {
+    // Tracked for every channel, wired or not, so a pad that is already being
+    // held when you wire it up is held as far as the new wire is concerned.
+    const value = actedValue(signal);
     const matching = connections.filter((connection) => connection.source === signal.channel);
     // Continuous values must use the current sample before a trigger wired to
     // the same source fires, regardless of connection insertion order.
     matching.forEach((connection) => {
-      if (findPort(targets, connection.target)?.type === 'value') processValue(connection, signal);
+      if (isValuePort(findPort(targets, connection.target)?.type)) processValue(connection, value);
     });
     matching.forEach((connection) => {
-      if (findPort(targets, connection.target)?.type === 'trigger') processTrigger(connection, signal);
+      if (findPort(targets, connection.target)?.type === 'trigger') processTrigger(connection, signal, value);
     });
   }
 
@@ -167,6 +225,7 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
   syncSources();
   reconcileSourceKinds();
   syncDestinations();
+  publishOptions();
   const unsubscribeSignals = signalStore.subscribe(({ type, signal }) => {
     if (type === 'kind') migrateSourceKind(signal);
     if (type === 'value') processSignal(signal);
@@ -186,11 +245,21 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
       gameId = next.id;
       targets = next.targets ?? [];
       runtime.clear();
-      values.clear();
       connections = loadConnections(resolvedStorage, gameId, targets);
+      chosen = loadPortOptions(resolvedStorage, gameId);
       syncSources();
       reconcileSourceKinds();
       syncDestinations();
+      publishOptions();
+      notify({ type: 'connections' });
+    },
+    /** The resolved choices for one control, falling back to its declared default. */
+    controlOptions: (node, port) => optionsFor(node, port),
+    setControlOption(node, port, id, value) {
+      const key = portKey(node, port);
+      chosen = { ...chosen, [key]: { ...chosen[key], [id]: value } };
+      savePortOptions(resolvedStorage, gameId, chosen);
+      actions.setControlOptions?.(node, port, optionsFor(node, port));
       notify({ type: 'connections' });
     },
     listConnections: () => structuredClone(connections),
@@ -211,7 +280,10 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
           || outputIdOf(signal, port, connection.transform) === outputId));
       if (existing) return structuredClone(existing);
 
-      if (port.type === 'value') {
+      // One wire per value port: the new one replaces whatever was there, and the
+      // port goes back to its default in the gap before the new wire's first
+      // sample. A trigger simply stacks — several moments can fire one control.
+      if (isValuePort(port.type)) {
         const replaced = connections.filter((connection) => targetsEqual(connection.target, target));
         replaced.forEach((connection) => runtime.delete(connection.id));
         connections = connections.filter((connection) => !replaced.includes(connection));
@@ -234,7 +306,7 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
       if (!connection || !patch?.transform) return;
       const port = findPort(targets, connection.target);
       const transform = normalizeTransform({ ...connection.transform, ...patch.transform });
-      if (!port || !transform || (port.type === 'value') !== isValueTransform(transform.type)) return;
+      if (!port || !transform || port.type !== portTypeForTransform(transform.type)) return;
       connection.transform = transform;
       runtime.delete(id);
       connectionsChanged();

@@ -8,6 +8,8 @@
 // Generated code is written block-style (if/else, no ternaries) so MakeCode can
 // decompile it back to blocks for attendees who'd rather edit visually.
 
+import { channelInfo } from './channels.js';
+
 // --- Code fragments ---------------------------------------------------------
 
 // Everything the Set up screen's baseline code does: UART service + a connected
@@ -48,18 +50,26 @@ function number(channel, expr) {
  *   handlers — top-level event handlers (outside the loop)
  *   build    — one wiring / build-idea note for the "Build it" list
  * Pin inputs have `modes` instead, keyed by mode id.
+ *
+ * What a tile says the input reads isn't written here: it comes from the
+ * channels themselves (see js/channels.js), so the tile you pick an input with
+ * and the block you later wire describe it in exactly the same words. `build`
+ * stays local, because it's about the thing you make, not the reading.
  */
+function describe(channels) {
+  return channels.map((channel) => channelInfo(channel).desc).filter(Boolean).join(' ');
+}
+
 function pinInput(n) {
   const ch = `p${n}`;
   return {
     id: ch,
     emoji: '🔌',
     name: `Pin ${n}`,
-    desc: 'Alligator-clip things to the big gold pin.',
     modes: {
       touch: {
-        label: 'Touch pad',
-        kind: 'binary',
+        label: 'Touch Pad',
+        kind: 'binary', form: 'pad',
         channels: [ch],
         loop: binary(ch, `input.pinIsPressed(TouchPin.P${n})`),
         build:
@@ -68,7 +78,7 @@ function pinInput(n) {
       },
       switch: {
         label: 'Switch',
-        kind: 'binary',
+        kind: 'binary', form: 'switch',
         channels: [ch],
         loop: binary(ch, `pins.digitalReadPin(DigitalPin.P${n}) == 1`),
         build:
@@ -80,9 +90,9 @@ function pinInput(n) {
 }
 
 /** A one-off accelerometer gesture: fires "<id>:1" via an onGesture handler. */
-function gesture(id, name, gestureName, emoji, desc, build) {
+function gesture(id, name, gestureName, emoji, build) {
   return {
-    id, emoji, name, desc,
+    id, emoji, name,
     kind: 'event',
     channels: [id],
     handlers: [
@@ -97,7 +107,7 @@ function gesture(id, name, gestureName, emoji, desc, build) {
 }
 
 // Inputs are grouped into three sections shown as separate labelled grids.
-export const SECTIONS = [
+const SECTIONS = [
   {
     id: 'touch',
     title: 'Touch & press',
@@ -105,24 +115,21 @@ export const SECTIONS = [
     inputs: [
       {
         id: 'btna', emoji: '🔘', name: 'Button A',
-        kind: 'binary',
-        desc: 'The A button — pressed or not.',
+        kind: 'binary', form: 'button',
         channels: ['btna'],
         loop: binary('btna', 'input.buttonIsPressed(Button.A)'),
         build: 'No wiring. To press it with an object, tape something onto the button or build a little lever that pushes it.',
       },
       {
         id: 'btnb', emoji: '🔘', name: 'Button B',
-        kind: 'binary',
-        desc: 'The B button — pressed or not.',
+        kind: 'binary', form: 'button',
         channels: ['btnb'],
         loop: binary('btnb', 'input.buttonIsPressed(Button.B)'),
         build: 'No wiring. Same tricks as Button A — two buttons means two separate channels.',
       },
       {
         id: 'logo', emoji: '⭐', name: 'Logo touch',
-        kind: 'binary',
-        desc: 'The gold logo is a touch sensor.',
+        kind: 'binary', form: 'logo',
         channels: ['logo'],
         loop: binary('logo', 'input.logoIsPressed()'),
         build: 'No wiring. Touch the gold logo on the front — it even works through a thin strip of foil taped over it.',
@@ -140,7 +147,6 @@ export const SECTIONS = [
       {
         id: 'tilt', emoji: '📐', name: 'Tilt',
         kind: 'number',
-        desc: 'Pitch & roll angles, live in degrees.',
         channels: ['pitch', 'roll'],
         loop: [
           ...number('pitch', 'input.rotation(Rotation.Pitch)'),
@@ -151,7 +157,6 @@ export const SECTIONS = [
       {
         id: 'heading', emoji: '🧭', name: 'Compass',
         kind: 'number',
-        desc: 'Which way it points, 0–360°, live.',
         channels: ['heading'],
         loop: number('heading', 'input.compassHeading()'),
         build: 'No wiring. The first run asks you to calibrate — tilt the board to fill the circle of dots. Then spin your object like a dial.',
@@ -164,37 +169,26 @@ export const SECTIONS = [
     desc: 'One-off moves — the board flags the instant each happens, so unlike the live inputs they add nothing to the Bluetooth load. Lean on these when you can.',
     inputs: [
       gesture('shake', 'Shake', 'Shake', '🫨',
-        'Fires once each shake.',
         'No wiring — attach the board to anything shakeable. A maraca, a stuffed animal, a pool noodle.'),
       gesture('tiltleft', 'Tilt left', 'TiltLeft', '👈',
-        'Fires when tipped left.',
         'No wiring. Fires the moment the board tips past ~45° to the left — a quick flick, not a hold.'),
       gesture('tiltright', 'Tilt right', 'TiltRight', '👉',
-        'Fires when tipped right.',
         'No wiring. The mirror of tilt-left — pair the two to nudge something left/right.'),
       gesture('logoup', 'Logo up', 'LogoUp', '🙂',
-        'Standing upright, logo at the top.',
         'No wiring. Board held UPRIGHT (screen facing you), gold-logo edge at the top — the normal way to read it. Fires when it swings into that position.'),
       gesture('logodown', 'Logo down', 'LogoDown', '🙃',
-        'Standing upright but flipped, logo at the bottom.',
         'No wiring. Still UPRIGHT and facing you, but turned 180° so the logo edge is now at the bottom. Fires when your object is flipped upside down.'),
       gesture('faceup', 'Face up', 'ScreenUp', '🔆',
-        'Lying flat, screen toward the ceiling.',
         'No wiring. Board laid FLAT like on a table, LED screen pointing up at the ceiling. Fires when it settles face-up.'),
       gesture('facedown', 'Face down', 'ScreenDown', '🌙',
-        'Lying flat, screen toward the floor.',
         'No wiring. Board laid FLAT the other way, LED screen pointing down at the floor. Fires when it settles face-down.'),
       gesture('freefall', 'Free fall', 'FreeFall', '🪂',
-        'Fires while dropping.',
         'No wiring. Fires the instant the board is in the air — toss it up (and catch it!) or drop it onto a cushion.'),
       gesture('g3', 'Small bump', 'ThreeG', '💥',
-        'A light 3g jolt.',
         'No wiring. Fires on a light knock (3g) — a gentle tap or bump of your object.'),
       gesture('g6', 'Hard hit', 'SixG', '💥',
-        'A hard 6g jolt.',
         'No wiring. Fires on a firm whack (6g) — a solid smack or a real shake.'),
       gesture('g8', 'Big slam', 'EightG', '💥',
-        'A big 8g jolt.',
         'No wiring. Fires only on a big impact (8g) — a hard slam. Use for a “power move”.'),
     ],
   },
@@ -206,7 +200,6 @@ export const SECTIONS = [
       {
         id: 'light', emoji: '💡', name: 'Light',
         kind: 'number',
-        desc: 'The LED grid doubles as a light sensor.',
         channels: ['light'],
         loop: number('light', 'input.lightLevel()'),
         build: 'No wiring. Cover and uncover the LED grid with your hand, or shine a flashlight on it. Sends 0–255.',
@@ -214,7 +207,6 @@ export const SECTIONS = [
       {
         id: 'temp', emoji: '🌡️', name: 'Temperature',
         kind: 'number',
-        desc: 'The chip’s temperature in °C.',
         channels: ['temp'],
         loop: number('temp', 'input.temperature()'),
         build: 'No wiring. Warm the processor with your thumbs — it responds slowly, which makes for hilarious controls.',
@@ -222,7 +214,6 @@ export const SECTIONS = [
       {
         id: 'mic', emoji: '🎤', name: 'Sound',
         kind: 'number',
-        desc: 'Microphone loudness.',
         channels: ['mic'],
         loop: number('mic', 'input.soundLevel()'),
         build: 'No wiring. Clap, yell, blow, sing — loudness arrives as 0–255. The mic is next to the touch logo.',
@@ -232,7 +223,7 @@ export const SECTIONS = [
 ];
 
 // Flat list of every input, for code/steps generation (order = section order).
-export const INPUTS = SECTIONS.flatMap((s) => s.inputs);
+const INPUTS = SECTIONS.flatMap((s) => s.inputs);
 
 // --- Code + steps generation ------------------------------------------------
 
@@ -248,7 +239,7 @@ function variantOf(input, pinModes) {
  * pitch + roll; a binary if/else still writes exactly one). The visualizer/game
  * feel laggy once the micro:bit's BLE UART can't keep up, so we warn past a cap.
  */
-export function streamingLines(selected, pinModes) {
+function streamingLines(selected, pinModes) {
   let n = 0;
   for (const input of INPUTS) {
     if (!selected.has(input.id)) continue;
@@ -258,7 +249,7 @@ export function streamingLines(selected, pinModes) {
   return n;
 }
 
-export function generateCode(selected, pinModes) {
+function generateCode(selected, pinModes) {
   const handlers = [];
   const loop = [];
   for (const input of INPUTS) {
@@ -354,7 +345,7 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl, onChange = () => {}
       <span class="tile-check" aria-hidden="true"></span>
       <span class="tile-emoji">${input.emoji}</span>
       <h3>${input.name}</h3>
-      <p>${input.desc}</p>
+      <p>${describe(v.channels)}</p>
       ${modePicker}
       <div class="tags">${tags}</div>
     `;
@@ -416,7 +407,14 @@ export function initBuilder({ grid, codeEl, stepsEl, warnEl, onChange = () => {}
     for (const input of INPUTS) {
       if (!selected.has(input.id)) continue;
       const variant = variantOf(input, pinModes);
-      variant.channels.forEach((channel) => channels.push({ channel, kind: variant.kind }));
+      // A pin is wired up differently depending on the mode it was set to here,
+      // so the mode travels with the channel — the wiring screen can then say
+      // which one this pin is, rather than leaving you to remember.
+      const mode = input.modes ? variant.label : null;
+      // What the thing physically is, so the wiring screen can say "the pad is
+      // touched" or "the switch is connected" rather than one wording for all.
+      const { form } = variant;
+      variant.channels.forEach((channel) => channels.push({ channel, kind: variant.kind, mode, form }));
     }
     onChange({ channels });
   }

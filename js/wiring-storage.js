@@ -2,10 +2,14 @@
 // connections, keyed by game id, so switching games never disturbs the wiring
 // you set up for another one.
 
-import { findPort, isValueTransform } from './wiring-config.js';
+import { findPort, portTypeForTransform } from './wiring-config.js';
 
-const STORAGE_KEY = 'experimental-game-controllers:wiring:v2';
-const CONFIG_VERSION = 2;
+// v3 split the single "value" connector into a level and a hold, which changed
+// both the shape of a saved transform and what a jack is called. Nothing from
+// v2 can be read as either one with confidence, so the old key is simply left
+// behind and the board opens empty.
+const STORAGE_KEY = 'experimental-game-controllers:wiring:v3';
+const CONFIG_VERSION = 3;
 
 export function browserStorage() {
   try {
@@ -47,7 +51,7 @@ export function saveConnections(storage, gameId, connections) {
 // What each jack is set to before anything is patched into it. These belong to
 // the input rather than to any one game, so they are stored flat rather than
 // under a game id.
-const DRAFT_KEY = 'experimental-game-controllers:jacks:v1';
+const DRAFT_KEY = 'experimental-game-controllers:jacks:v2';
 
 export function loadDrafts(storage) {
   const drafts = new Map();
@@ -73,6 +77,62 @@ export function saveDrafts(storage, drafts) {
   }
 }
 
+// How often a control will act on whatever reaches it, held per port so the
+// pacing is there to read and set before a wire exists — and still there after
+// one is cut. Just a number of milliseconds; the wire's own transform is what
+// actually carries it once something is patched in.
+const PACE_KEY = 'experimental-game-controllers:ports:v1';
+
+export function loadPortPaces(storage) {
+  const paces = new Map();
+  let saved = null;
+  try {
+    saved = JSON.parse(storage?.getItem(PACE_KEY) ?? 'null');
+  } catch {
+    return paces;
+  }
+  if (!isRecord(saved)) return paces;
+  for (const [key, value] of Object.entries(saved)) {
+    const cooldownMs = finiteNumber(value);
+    if (cooldownMs != null && cooldownMs >= 0) paces.set(key, cooldownMs);
+  }
+  return paces;
+}
+
+// How each control is set up, per game — the choices a game offers about what
+// its own ports do with what they're given. Stored under the game id, like the
+// connections, since the ports belong to the game.
+const OPTION_KEY = 'experimental-game-controllers:controls:v1';
+
+export function loadPortOptions(storage, gameId) {
+  try {
+    const saved = JSON.parse(storage?.getItem(OPTION_KEY) ?? 'null');
+    const forGame = isRecord(saved) ? saved[gameId] : null;
+    return isRecord(forGame) ? forGame : {};
+  } catch {
+    return {};
+  }
+}
+
+export function savePortOptions(storage, gameId, options) {
+  try {
+    const saved = JSON.parse(storage?.getItem(OPTION_KEY) ?? 'null');
+    const games = isRecord(saved) ? saved : {};
+    games[gameId] = options;
+    storage?.setItem(OPTION_KEY, JSON.stringify(games));
+  } catch {
+    // Persistence may be blocked; the controls still work for this session.
+  }
+}
+
+export function savePortPaces(storage, paces) {
+  try {
+    storage?.setItem(PACE_KEY, JSON.stringify(Object.fromEntries(paces)));
+  } catch {
+    // Persistence may be blocked; the ports still work for this session.
+  }
+}
+
 export function normalizeTransform(value) {
   if (!isRecord(value) || typeof value.type !== 'string') return null;
   const cooldownMs = finiteNumber(value.cooldownMs);
@@ -83,6 +143,12 @@ export function normalizeTransform(value) {
   if (value.type === 'edge') {
     if (cooldownMs == null || (value.edge !== 'rising' && value.edge !== 'falling')) return null;
     return { type: 'edge', edge: value.edge, cooldownMs };
+  }
+  // A button's hold has no span to carry: the reading is already the state, and
+  // inverting is the only thing there is to say about it.
+  if (value.type === 'hold') {
+    const invert = value.invert === undefined ? false : value.invert;
+    return typeof invert === 'boolean' ? { type: 'hold', invert } : null;
   }
 
   // Everything that compares raw readings carries a bare span and no invert:
@@ -129,7 +195,7 @@ function decodeConnection(value, targets) {
   const portDefinition = findPort(targets, target);
   const transform = normalizeTransform(value.transform);
   if (!portDefinition || !transform) return null;
-  if ((portDefinition.type === 'value') !== isValueTransform(transform.type)) return null;
+  if (portDefinition.type !== portTypeForTransform(transform.type)) return null;
   return { id, source, sourceKind, target, transform };
 }
 

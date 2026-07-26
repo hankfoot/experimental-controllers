@@ -94,30 +94,30 @@ document.addEventListener('click', (e) => {
 });
 
 // --- Connection button + status --------------------------------------------
-// The top bar shows exactly one control: Connect until a board is paired, then
-// the board's own name — a button whose only job is opening the live-input
-// popover. Disconnect lives inside that popover.
+// The top bar always shows the live-input toggle, labelled with the connection
+// state ("Not Connected" → the board's own name). Connect sits beside it while
+// no board is paired and drops out once one is; Disconnect lives in the popover.
 const connectBtn = document.getElementById('connect-btn');
 const disconnectBtn = document.getElementById('disconnect-btn');
 const signalLabel = document.getElementById('signal-label');
 
 onStatus(({ state, message }) => {
-  // Whichever control the user just pressed is the one about to disappear, so
-  // note it now and hand focus to its replacement rather than dropping it.
+  // Connect is the control that disappears on pairing, so if it's what the user
+  // just pressed, hand focus to the toggle rather than dropping it.
   const wasFocused = document.activeElement;
   const connected = state === 'connected';
 
   signalToggle.dataset.state = state; // colors the dot: grey / yellow / green
-  signalToggle.hidden = !connected;
   connectBtn.hidden = connected;
   connectBtn.disabled = state === 'connecting';
   connectBtn.textContent = state === 'connecting' ? 'Connecting…' : 'Connect';
+  disconnectBtn.hidden = !connected;
 
   if (connected) {
     signalLabel.textContent = message || 'Connected'; // e.g. "BBC micro:bit [gapeg]"
     if (wasFocused === connectBtn) signalToggle.focus();
   } else {
-    openViz(false); // no board, nothing live to show
+    signalLabel.textContent = state === 'connecting' ? 'Connecting…' : 'Not Connected';
     if (wasFocused === disconnectBtn) connectBtn.focus();
   }
 });

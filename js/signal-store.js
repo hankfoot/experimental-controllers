@@ -26,6 +26,12 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
       channel,
       label: info.label,
       emoji: info.emoji,
+      // What this reading actually is, in one line, and what its numbers are in.
+      // A channel invented in MakeCode has neither, and simply says less.
+      desc: info.desc ?? null,
+      unit: info.unit ?? null,
+      // How a gesture reads mid-sentence, for the ones that have a set wording.
+      phrase: info.phrase ?? null,
       kind: info.kind ?? kind,
       value: null,
       min: info.min ?? 0,
@@ -35,6 +41,12 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
       live: false,
       planned: false,
       wired: false,
+      // How this input was set up, when that was a choice — a pin read as a
+      // touch pad and the same pin read as a switch are wired differently.
+      mode: null,
+      // What it physically is: a button, a logo, a pad, a switch. Decides how
+      // it reads in a sentence, since all four send the same 1s and 0s.
+      form: null,
       lastSeen: 0,
     };
     signals.set(channel, signal);
@@ -86,7 +98,14 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
     for (const descriptor of descriptors) {
       const channel = typeof descriptor === 'string' ? descriptor : descriptor.channel;
       const kind = typeof descriptor === 'string' ? undefined : descriptor.kind;
-      ensure(channel, kind)[flag] = true;
+      const signal = ensure(channel, kind);
+      signal[flag] = true;
+      // Only the side that owns the choice sets it, so a live sample arriving
+      // for a planned pin never blanks out the mode it was planned as.
+      if (typeof descriptor === 'object' && descriptor.mode !== undefined) {
+        signal.mode = descriptor.mode;
+        signal.form = descriptor.form ?? null;
+      }
     }
     for (const [channel, signal] of signals) {
       if (!signal.live && !signal.planned && !signal.wired) signals.delete(channel);
