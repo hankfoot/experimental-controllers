@@ -158,9 +158,17 @@ function pinInput(n) {
         label: 'Switch',
         kind: 'binary', form: 'switch',
         channels: [ch],
-        // A plain digital pin reports nothing until it is asked to watch its
-        // own edges; then closing the circuit is a rise and opening it a fall.
-        setup: [`pins.setEvents(DigitalPin.P${n}, PinEventType.Edge)`],
+        // An open switch leaves the pin connected to nothing at all, and a
+        // floating input doesn't read 0 — it drifts on whatever hum is in the
+        // room and reports a stream of rises and falls before anyone has
+        // touched the thing. The pull-down ties it to 0 while the circuit is
+        // open, so the only rise is the foils actually meeting. It goes before
+        // setEvents so the pin is already resting at 0 when edge watching
+        // starts, rather than firing an edge from its own settling.
+        setup: [
+          `pins.setPull(DigitalPin.P${n}, PinPullMode.PullDown)`,
+          `pins.setEvents(DigitalPin.P${n}, PinEventType.Edge)`,
+        ],
         handlers: edges(ch, {
           down: `control.onEvent(EventBusSource.MICROBIT_ID_IO_P${n}, EventBusValue.MICROBIT_PIN_EVT_RISE, function () {`,
           up: `control.onEvent(EventBusSource.MICROBIT_ID_IO_P${n}, EventBusValue.MICROBIT_PIN_EVT_FALL, function () {`,

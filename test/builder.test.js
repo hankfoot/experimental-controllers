@@ -63,6 +63,27 @@ test('the generated program stays block-shaped', () => {
   assert.ok(!program.includes('=>'), 'and no arrow functions');
 });
 
+// An open switch leaves the pin attached to nothing, and a floating input picks
+// up room hum as a stream of edges — the switch reporting frantically before
+// anyone has touched it. The pull-down is the whole fix, and it has to be in
+// place before edge watching starts or the pin's own settling reads as an edge.
+test('a switch pin is pulled down, before its edges are watched', () => {
+  const program = code(['p0'], { p0: 'switch' });
+
+  const pull = program.indexOf('pins.setPull(DigitalPin.P0, PinPullMode.PullDown)');
+  const events = program.indexOf('pins.setEvents(DigitalPin.P0, PinEventType.Edge)');
+  assert.ok(pull > 0, 'the pin is tied to 0 while the circuit is open');
+  assert.ok(events > 0);
+  assert.ok(pull < events, 'and it is settled before anything watches for edges');
+});
+
+// Touch does its own sensing and is actively broken by a pull — it is the one
+// pin mode that must be left alone.
+test('a touch pin is not pulled', () => {
+  const program = code(['p0'], { p0: 'touch' });
+  assert.ok(!program.includes('setPull'));
+});
+
 test('a build of nothing but gestures still reports them', () => {
   const program = code(['shake', 'g8']);
   assert.ok(program.includes('send("shake:1")'));
