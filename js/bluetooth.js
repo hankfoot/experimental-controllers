@@ -43,6 +43,35 @@ function announce(next) {
   emitStatus(next);
 }
 
+/**
+ * Plain English for a failed connection.
+ *
+ * Web Bluetooth's own messages are close to useless at the moment they matter —
+ * "Connection failed for unknown reason" is the one people actually see — while
+ * the `name` says which of several very different problems it is. In a room of
+ * twenty boards, "the board is busy" and "the wrong program is on it" need
+ * opposite responses, so the distinction is worth spelling out.
+ */
+export function describeFailure(err) {
+  const name = err?.name || '';
+  if (name === 'NotSupportedError') {
+    return 'Connected, but this board is not running a program with Bluetooth on it. Re-flash from the Build step.';
+  }
+  if (name === 'NetworkError') {
+    // Overwhelmingly this is the board already being held: the MakeCode editor
+    // keeps its own link to a board it has flashed, and the OS will not hand the
+    // same board to a second thing. It also covers a board that walked away.
+    return 'Could not reach the board. Close the MakeCode editor tab, then press the board’s reset button and try again.';
+  }
+  if (name === 'SecurityError') {
+    return 'The browser blocked the connection. This page has to be served over https or localhost.';
+  }
+  if (name === 'InvalidStateError') {
+    return 'The board is still starting up. Give it a second and try again.';
+  }
+  return err?.message || 'Could not connect.';
+}
+
 /** Is Web Bluetooth available in this browser? */
 export function isSupported() {
   return typeof navigator !== 'undefined' && !!navigator.bluetooth;
@@ -109,7 +138,7 @@ export async function connect() {
     } catch {
       /* already down, which is the state we were asking for */
     }
-    announce({ state: 'disconnected', message: err?.message });
+    announce({ state: 'disconnected', message: describeFailure(err) });
     throw err;
   }
 

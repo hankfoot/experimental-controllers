@@ -61,6 +61,17 @@ test('the generated program stays block-shaped', () => {
   const program = code(INPUTS.map((input) => input.id));
   assert.ok(!program.includes('?'), 'no ternaries anywhere');
   assert.ok(!program.includes('=>'), 'and no arrow functions');
+
+  // A reporter alone on a line compiles fine but is not a shape MakeCode can
+  // turn back into blocks, so the whole program silently drops to JavaScript.
+  // Two priming reads were written that way. They return a value, so they have
+  // to be assigned to something; the calls returning nothing are the safe ones.
+  const reporters = /^\s*(input\.(pinIsPressed|compassHeading|lightLevel|rotation|acceleration)|pins\.(digitalReadPin|analogReadPin))\(/;
+  for (const line of program.split('\n')) {
+    if (reporters.test(line)) {
+      assert.fail(`reporter standing alone as a statement, which will not decompile: ${line.trim()}`);
+    }
+  }
 });
 
 // An open switch leaves the pin attached to nothing, and a floating input picks
@@ -82,6 +93,15 @@ test('a switch pin is pulled down, before its edges are watched', () => {
 test('a touch pin is not pulled', () => {
   const program = code(['p0'], { p0: 'touch' });
   assert.ok(!program.includes('setPull'));
+});
+
+// Resistive touch — the default — only reads when the player completes a circuit
+// to GND, so it needs a second clip held in the other hand and does nothing at
+// all without one. That was "touch doesn't work". Capacitive needs one wire.
+test('a touch pin senses capacitively, so no GND wire is needed', () => {
+  const program = code(['p0'], { p0: 'touch' });
+  assert.ok(program.includes('pins.touchSetMode(TouchTarget.P0, TouchTargetMode.Capacitive)'));
+  assert.ok(!program.includes('TouchTargetMode.Resistive'));
 });
 
 test('a build of nothing but gestures still reports them', () => {

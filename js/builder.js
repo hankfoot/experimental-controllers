@@ -144,15 +144,22 @@ function pinInput(n) {
         label: 'Touch Pad',
         kind: 'binary', form: 'pad',
         channels: [ch],
-        // Reading the pin is also what switches it into makey-makey touch
-        // sensing, so it is read once up front — otherwise the pin sits in
+        // Setting the mode is also what switches the pin into touch sensing, so
+        // this doubles as the priming the pin needs — otherwise it sits in
         // digital mode and the touch events never arrive.
-        setup: [`input.pinIsPressed(TouchPin.P${n})`],
+        //
+        // Capacitive rather than the default resistive, which is the difference
+        // between one wire and two. Resistive touch only reads when the player
+        // completes a circuit to GND, so it needs a second clip held in the
+        // other hand the whole time — fiddly, easy to let slip, and it fails
+        // silently when it does. Capacitive senses the body's charge through
+        // the one wire. V2 only, which the workshop's boards are.
+        setup: [`pins.touchSetMode(TouchTarget.P${n}, TouchTargetMode.Capacitive)`],
         handlers: buttonEdges(ch, `MICROBIT_ID_IO_P${n}`),
         connect: binary(ch, `input.pinIsPressed(TouchPin.P${n})`),
         build:
-          `Clip a wire from P${n} to anything conductive — foil, fruit, a spoon. ` +
-          `The player holds a second clip from GND in their other hand; touching the object sends 1.`,
+          `Clip one wire from P${n} to anything conductive — foil, fruit, a spoon. ` +
+          `Touching the object sends 1. No second wire to hold: the pin senses your body through the one clip.`,
       },
       switch: {
         label: 'Switch',
@@ -265,7 +272,11 @@ const SECTIONS = [
         // instead of streaming, which reads as a broken connection. One throwaway
         // read up here spends it at power-on instead, while the board is still in
         // your hand. Once calibrated it returns instantly and shows nothing.
-        setup: ['input.compassHeading()'],
+        //
+        // Assigned rather than left as a bare call, because a reporter standing
+        // alone as a statement is not a shape MakeCode can turn back into
+        // blocks — it compiles, but it drops the whole program to JavaScript.
+        setup: ['let calibrated = input.compassHeading()'],
         loop: number('heading', 'input.compassHeading()'),
         build: 'No wiring — spin your object like a dial. On power-up it asks you to calibrate: tilt the board to fill the LED grid. Calibrate with the finished object assembled, battery and all — the reading is thrown off by whatever is attached, so a bare board calibrated on the bench will be wrong once it is inside your build. Expect to redo it after each download, and test in the room you will play in: laptops, speaker magnets and steel tables all pull it about. On the Controls page you pick which direction to watch for, and whether it fires on arrival or holds while pointing that way.',
       },
