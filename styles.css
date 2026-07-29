@@ -201,6 +201,14 @@ code {
 }
 .note strong { color: var(--ink); }
 .note a { color: var(--yellow-ink); }
+/* A failed connection, which is a louder thing than a note: red rather than
+   yellow, because it is reporting that the thing you just asked for did not
+   happen, and it appears at the moment you asked. */
+.note-warn {
+  background: var(--red-soft);
+  border-color: color-mix(in srgb, var(--red) 40%, var(--line));
+  color: var(--red-ink);
+}
 
 /* ---------- Menu bar ---------- */
 .menu { display: flex; gap: 4px; flex-wrap: wrap; order: 3; width: 100%; margin-top: 4px; }

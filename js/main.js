@@ -219,6 +219,8 @@ function expectsStream() {
     (signal.planned || signal.wired) && (signal.kind === 'number' || signal.kind === 'bearing'));
 }
 
+const connectError = document.getElementById('connect-error');
+
 const LABELS = {
   lost: 'Connection lost',
   stale: 'Connected, no data',
@@ -249,6 +251,16 @@ function paint({ state, message, retrying = false }) {
     signalLabel.textContent = retrying ? 'Reconnecting…' : 'Connecting…';
   } else {
     signalLabel.textContent = LABELS[state] ?? 'Not Connected';
+  }
+
+  // The chip has room for a state, not for a sentence, so the reason goes to the
+  // banner. Without this the transports were working out exactly why a connection
+  // failed and then throwing it away — every failure read "Not Connected",
+  // which is the one thing the person already knew.
+  if (connectError) {
+    const explain = !connected && !connecting && message;
+    connectError.textContent = explain || '';
+    connectError.hidden = !explain;
   }
   if (connected && wasFocused === connectBtn) signalToggle.focus();
   if (!connected && wasFocused === disconnectBtn) connectBtn.focus();
