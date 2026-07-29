@@ -49,7 +49,7 @@ function scaffoldTop(connect) {
     // cable is not written to. Guarding this on `connected` instead is what
     // broke wired sessions before — that flag only ever means Bluetooth.
     'let wired = false',
-    'serial.onDataReceived(serial.delimiters(Delimiter.NewLine), function () {',
+    'serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {',
     '    wired = true',
     '})',
     'function send (line: string) {',

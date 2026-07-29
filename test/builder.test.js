@@ -40,7 +40,9 @@ test('neither transport is written to until something is listening', () => {
     'and the radio only once a browser has attached');
 
   assert.ok(program.includes('let wired = false'), 'and it starts closed, so a battery board never blocks');
-  assert.ok(program.includes('serial.onDataReceived(serial.delimiters(Delimiter.NewLine), function () {'),
+  // Delimiters, plural — the singular is not a name MakeCode has, and the whole
+  // program fails to compile on it.
+  assert.ok(program.includes('serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {'),
     'with the greeting from the browser being what opens it');
 });
 
