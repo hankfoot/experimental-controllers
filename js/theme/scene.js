@@ -177,8 +177,12 @@ export function createSceneRenderer(ctx, rules) {
       if (sky) ctx.drawImage(sky, 0, 0, width, height);
 
       drawBand(LAYOUT.far, images.get(scene.far.sprite, 'far'), distance);
-      drawSpaced(LAYOUT.near, images.get(scene.near.sprite, 'near'), distance);
+      // Drifting things sit between the two: in front of the far band, which is
+      // the horizon, and behind the scenery, which is the near side of the
+      // world. Drawn last they passed in front of the trees, and a cloud
+      // crossing a trunk reads as being closer to you than the tree is.
       drawDecor(images.get(scene.decor.sprite, 'decor'), distance, now);
+      drawSpaced(LAYOUT.near, images.get(scene.near.sprite, 'near'), distance);
     },
 
     drawGround(scene, images, distance) {

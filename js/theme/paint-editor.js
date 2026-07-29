@@ -50,7 +50,12 @@ const button = (className, label, title) => {
 export function createPaintEditor({
   source, title, onCommit, onClose, onReset, size = SLOT_SIZE,
 }) {
-  const wide = size.width !== size.height;
+  // Which way a slot is out of square, not merely that it is. Treating both the
+  // same put a tall pillar in the shell meant for a wide sky — a 2:3 canvas in a
+  // 720px box is over a thousand pixels tall, which is why the art arrived
+  // magnified and scrolling.
+  const shape = size.width === size.height ? null
+    : (size.width > size.height ? 'wide' : 'tall');
   // Brush widths are in canvas pixels, so on a bigger frame the same number is
   // a finer pen. Scaled once here instead, so "thick" stays the same fraction
   // of the picture whatever the picture is.
@@ -69,9 +74,9 @@ export function createPaintEditor({
 
   const shell = document.createElement('div');
   shell.className = 'paint-shell';
-  // A whole sky in a 408px box is not editable. Marked rather than measured so
-  // the stylesheet keeps the widths.
-  if (wide) shell.dataset.wide = 'true';
+  // A whole sky in a 408px box is not editable, and a pillar in a 720px one is
+  // a wall. Marked rather than measured, so the stylesheet keeps the widths.
+  if (shape) shell.dataset.shape = shape;
 
   // --- The canvas -----------------------------------------------------------
   const canvas = makeCanvas(size);
