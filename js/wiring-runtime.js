@@ -113,11 +113,56 @@ export function sampleRange(rawValue, transform, state, now = null) {
   return output;
 }
 
+// How long a contact has to stay open before we believe it has been let go.
+//
+// Sized for foil rather than for a proper switch. Two pieces of foil held
+// together are not making one connection, they are making and breaking it
+// continuously — pressure shifts, the foil flexes, the surface oxidises — and
+// the board reports every one of those edges honestly, so holding a contact
+// down arrives as a stream of presses and releases rather than a burst at the
+// start. Bridging that needs a window wider than a switch's bounce: tens of
+// milliseconds, not a handful.
+//
+// The cost is that letting go is reported this late, which at 80ms is under
+// five frames and not something you can feel. Being too eager is far more
+// expensive — that is the wiggle.
+export const RELEASE_SETTLE_MS = 80;
+
 // A button already sends the held state; the only choice is which way round to
-// read it, so this is the whole transform.
-export function sampleHold(rawValue, transform) {
+// read it. Taking hold is therefore immediate — latency on the press is what
+// makes a controller feel bad — and only letting go is deferred.
+//
+// The deferral is a delay, never a condition on what arrives next: `sampleHold`
+// says when it wants asking again via `holdReleaseAt`, and the engine's timer is
+// what actually delivers the release. That distinction is the whole safety
+// property here. The filter deleted from this file used to hold on until a
+// second 0 arrived, and a second 0 never comes — the board sends the release
+// once and then says nothing — so every contact latched on after its first
+// press. A release that is only ever waiting on a clock cannot do that.
+export function sampleHold(rawValue, transform, state = {}, now = null) {
   const on = rawValue > 0;
-  return (transform.invert ? !on : on) ? 1 : 0;
+  const wanted = (transform.invert ? !on : on) ? 1 : 0;
+
+  // No clock — the design preview, and anything sampling a value directly — so
+  // there is nothing to measure a settle against. Follow the input exactly.
+  if (now == null) return wanted;
+
+  if (wanted === 1) {
+    state.holdReleaseAt = null;
+    state.held = 1;
+    return 1;
+  }
+  // Already released, or never held: nothing to settle.
+  if (state.held !== 1) {
+    state.holdReleaseAt = null;
+    return 0;
+  }
+  if (state.holdReleaseAt == null) state.holdReleaseAt = now + RELEASE_SETTLE_MS;
+  if (now < state.holdReleaseAt) return 1;
+
+  state.holdReleaseAt = null;
+  state.held = 0;
+  return 0;
 }
 
 // The threshold is in the signal's own units, so a gate compares raw readings

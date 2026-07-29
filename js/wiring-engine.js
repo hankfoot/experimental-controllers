@@ -90,6 +90,12 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
 
   /** Every value port back to the value it has when nothing is driving it. */
   function restValuePorts({ wired }) {
+    // Ports are written directly below, behind the back of the bookkeeping that
+    // skips repeat values. Left alone, a wire whose last output was 1 would
+    // decline to re-apply that 1 after a rest had quietly put the port back to
+    // 0, and the control would stay at rest with the wire believing otherwise.
+    for (const state of runtime.values()) state.lastApplied = undefined;
+
     for (const target of targets) {
       for (const port of target.ports) {
         // Only a port that carries a running value has one to fall back to —
@@ -173,9 +179,38 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
     const { transform } = connection;
     const sample = SAMPLERS[transform.type];
     if (!sample) return;
-    const output = sample(value, transform, runtimeState(connection.id), now);
-    applyValue(connection.target.node, connection.target.port, output);
-    notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
+    const state = runtimeState(connection.id);
+    // A fresh reading supersedes any settle already in flight — a contact that
+    // comes back is a contact that was never really let go.
+    if (state.settleTimer != null) {
+      clearTimeout(state.settleTimer);
+      state.settleTimer = null;
+    }
+    const output = sample(value, transform, state, now);
+    // A reading that does not change the output is not worth reporting. Without
+    // this a contact breaking mid-hold still announces itself — the value it
+    // announces is the one already in force, but the announcement is what the
+    // activity meter draws, so the wire would flicker while the control it
+    // drives sat perfectly still.
+    if (state.lastApplied !== output) {
+      state.lastApplied = output;
+      applyValue(connection.target.node, connection.target.port, output);
+      notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
+    }
+
+    // A held contact that is waiting out its settle has to be asked again, and
+    // nothing else will ask: the board sends a release once and then says
+    // nothing at all, so there is no next reading to carry it. This timer is the
+    // only thing standing between a deferred release and a contact latched on
+    // forever, which is why the release is a delay and never a condition on
+    // what arrives next — see sampleHold.
+    if (state.holdReleaseAt != null) {
+      const due = state.holdReleaseAt;
+      state.settleTimer = setTimeout(() => {
+        state.settleTimer = null;
+        processValue(connection, value, due);
+      }, Math.max(0, due - now));
+    }
   }
 
   // A port may fix its own pace instead of offering it, in which case the port

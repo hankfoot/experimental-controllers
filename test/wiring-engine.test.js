@@ -5,6 +5,7 @@ import { createSignalStore } from '../js/signal-store.js';
 import { createWiringEngine } from '../js/wiring-engine.js';
 import { key } from '../js/storage-keys.js';
 import { memoryStorage } from './helpers/memory-storage.js';
+import { sampleHold, RELEASE_SETTLE_MS } from '../js/wiring-runtime.js';
 
 // A stand-in game with one of each port type. The wiring engine is generic, so
 // these names are arbitrary — that is exactly what these tests pin down.
@@ -180,10 +181,9 @@ test('an analog hold rides through chatter at its threshold', () => {
   context.emit('light', 51);
   context.emit('light', 49);
 
-  assert.deepEqual(
-    context.calls.filter(([name]) => name === 'value').map(([, , value]) => value),
-    [1, 1, 1],
-  );
+  // Nothing at all is reported, because nothing changed: the hold was already 1
+  // and stayed 1 throughout. A release appearing here is the failure.
+  assert.deepEqual(context.calls.filter(([name]) => name === 'value'), []);
 });
 
 test('a gated wire survives a reload and keeps holding', () => {
@@ -607,7 +607,13 @@ test('no smoothing follows the reading exactly', () => {
 // one 1 when it goes down, one 0 when it comes up. Nothing on this path may
 // wait for a reading to be repeated, because it never will be.
 
-test('a press and its release each land once', () => {
+// The release is held back briefly to bridge a contact that will not hold still,
+// and it arrives on a timer rather than on another reading — so these wait for
+// it. Waiting is the point: if the timer were ever not to fire, the contact
+// would stay on for good, and that is the bug this whole path exists to avoid.
+const settled = () => new Promise((resolve) => setTimeout(resolve, RELEASE_SETTLE_MS * 2));
+
+test('a press and its release each land once', async () => {
   const context = setup();
   context.emit('btna', 0, 0);
   context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
@@ -615,6 +621,7 @@ test('a press and its release each land once', () => {
 
   context.emit('btna', 1, 100); // down
   context.emit('btna', 0, 200); // up, and this is the only 0 there will be
+  await settled();
 
   assert.deepEqual(
     context.calls.filter(([name, port]) => name === 'value' && port === 'speed.hold'),
@@ -654,7 +661,7 @@ test('holding a contact down does not re-fire its trigger', () => {
   );
 });
 
-test('two controls on one contact both let go together', () => {
+test('two controls on one contact both let go together', async () => {
   const context = setup();
   context.emit('btna', 0, 0);
   context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
@@ -663,6 +670,7 @@ test('two controls on one contact both let go together', () => {
   context.calls.length = 0;
 
   context.emit('btna', 0, 200);
+  await settled();
 
   const released = context.calls.filter(([name]) => name === 'value');
   assert.equal(released.length, 2);
@@ -775,8 +783,9 @@ test('resting on the edge of a sector does not chatter the hold', () => {
   // from without the two bands.
   for (const degrees of [45, 40, 50, 45]) context.emit('heading', degrees);
 
-  const held = context.calls.filter(([, port]) => port === 'speed.hold').map(([, , value]) => value);
-  assert.deepEqual([...new Set(held)], [1], 'the hold let go inside its own dead band');
+  // Nothing is reported at all: it was on, and it stayed on. Any entry here is
+  // the hold moving inside its own dead band, which is the chatter.
+  assert.deepEqual(context.calls.filter(([, port]) => port === 'speed.hold'), []);
 
   // Properly away, though, and it does let go.
   context.emit('heading', 90);
@@ -821,4 +830,60 @@ test('a saved bearing survives a reload and refuses a direction it does not offe
 
   assert.equal(saved(270).length, 1, 'a direction it does offer is read back');
   assert.deepEqual(saved(45), [], 'and one it does not is dropped');
+});
+
+// --- Holding a contact that will not hold still ------------------------------
+//
+// Foil pressed against foil makes and breaks continuously for as long as it is
+// held, and the board reports every edge, so "held down" arrives as a stream of
+// presses and releases. Reported literally that is a control that wiggles.
+
+test('a contact that keeps breaking and remaking reads as held', () => {
+  const transform = { type: 'hold' };
+  const state = {};
+
+  assert.equal(sampleHold(1, transform, state, 0), 1, 'taking hold is immediate');
+  // A break at 20ms, back at 30, break at 50, back at 65 — well inside the
+  // window each time. None of it should reach the game.
+  for (const [at, raw] of [[20, 0], [30, 1], [50, 0], [65, 1], [90, 0], [100, 1]]) {
+    assert.equal(sampleHold(raw, transform, state, at), 1, `still held at ${at}ms`);
+  }
+});
+
+// The property that matters most, and the one the deleted filter got wrong: the
+// release is on a clock, never on a second reading. The board sends the release
+// once and then says nothing, so anything waiting for more input waits forever.
+test('a real release always lands, however long nothing else arrives', () => {
+  const transform = { type: 'hold' };
+  const state = {};
+
+  sampleHold(1, transform, state, 0);
+  assert.equal(sampleHold(0, transform, state, 10), 1, 'not believed straight away');
+  assert.equal(state.holdReleaseAt, 10 + RELEASE_SETTLE_MS, 'and it says when to ask again');
+
+  // Nothing further arrives — which is the normal case. Asked again on time, it
+  // lets go. If this ever returns 1 the contact is latched on for good.
+  assert.equal(sampleHold(0, transform, state, state.holdReleaseAt), 0);
+  assert.equal(state.holdReleaseAt, null, 'with nothing left pending');
+});
+
+test('holding is not delayed, only letting go', () => {
+  const state = {};
+  assert.equal(sampleHold(1, { type: 'hold' }, state, 1000), 1);
+  assert.equal(state.holdReleaseAt, null, 'a press schedules nothing');
+});
+
+test('inverted holds settle the same way round', () => {
+  const transform = { type: 'hold', invert: true };
+  const state = {};
+  assert.equal(sampleHold(0, transform, state, 0), 1, 'open is held when inverted');
+  assert.equal(sampleHold(1, transform, state, 10), 1, 'and a blip does not release it');
+  assert.equal(sampleHold(1, transform, state, 10 + RELEASE_SETTLE_MS), 0);
+});
+
+// Callers with no clock — the design preview samples directly — must be
+// unaffected, since there is nothing to measure a settle against.
+test('without a clock a hold follows the input exactly', () => {
+  assert.equal(sampleHold(1, { type: 'hold' }), 1);
+  assert.equal(sampleHold(0, { type: 'hold' }), 0);
 });
