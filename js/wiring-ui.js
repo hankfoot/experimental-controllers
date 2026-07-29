@@ -630,6 +630,20 @@ export function initWiringUI({ signalStore, engine }) {
         ));
         return;
       }
+      // Two numbers, because "near" is a place and a tolerance and neither one
+      // implies the other: where flat is, and how far off flat still counts.
+      // Written as one sentence so it reads the way the others do.
+      if (transform.type === 'near') {
+        host.appendChild(sentence(
+          `While ${subjectOf(signal)} is within`,
+          spanInput(transform, 'width'),
+          ...unitWords(signal),
+          'of',
+          spanInput(transform, 'center'),
+          ...unitWords(signal),
+        ));
+        return;
+      }
       if (transform.type === 'hold') {
         const said = phrasingOf(signal);
         host.appendChild(sentence(

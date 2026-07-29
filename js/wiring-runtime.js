@@ -8,6 +8,11 @@ const clamp01 = (value) => Math.max(0, Math.min(1, value));
 // not to be tuned.
 const GATE_HYSTERESIS = 0.03;
 
+// The same idea for a band, but as a fraction of the band's own width rather
+// than of the whole range: a "near zero" band is narrow by design, and 3% of the
+// full span of a reading would be most of the band rather than a nudge past it.
+const GATE_HYSTERESIS_NEAR = 0.15;
+
 // How near a bearing counts as facing it, and how far away it takes to stop.
 // Two numbers rather than one for the same reason a gate has a dead band: an
 // object sitting on the edge of a sector would otherwise flicker on and off.
@@ -53,14 +58,26 @@ export function createDefaultTransform(signal, port, outputId) {
     // Only an analog reading needs squaring off; a button's 0/1 already holds.
     // Which side of the line it holds on comes from the jack, so the two gated
     // jacks start life pointing opposite ways.
-    return signal.kind === 'number'
-      ? {
-        type: 'gate',
+    if (signal.kind !== 'number') return { type: 'hold', invert: false };
+    // Centred on zero when the reading has a zero in the middle of it — which
+    // is what a tilt is, and what makes "near" worth having: pitch runs -90..90
+    // and flat is the middle. A reading that only climbs, like light, has no
+    // meaningful middle, so it starts at its own midpoint like a gate does.
+    if (outputId === 'hold-near') {
+      const spansZero = range.min < 0 && range.max > 0;
+      return {
+        type: 'near',
         ...range,
-        direction: holdDirection(outputId),
-        threshold: (range.min + range.max) / 2,
-      }
-      : { type: 'hold', invert: false };
+        center: spansZero ? 0 : (range.min + range.max) / 2,
+        width: Math.abs(range.max - range.min) * 0.1,
+      };
+    }
+    return {
+      type: 'gate',
+      ...range,
+      direction: holdDirection(outputId),
+      threshold: (range.min + range.max) / 2,
+    };
   }
   if (signal.kind === 'bearing') return { type: 'faces', bearing: 0, cooldownMs: 160 };
   if (signal.kind === 'event') return { type: 'event', cooldownMs: 160 };
@@ -134,6 +151,27 @@ export function sampleGate(rawValue, transform, state) {
     ? transform.threshold - offset
     : transform.threshold + offset;
   state.gateOn = transform.direction === 'below' ? rawValue < line : rawValue > line;
+  return state.gateOn ? 1 : 0;
+}
+
+/**
+ * Held while a reading sits close to a value — "is it lying flat".
+ *
+ * A gate asks which side of a line a reading is on, which cannot express being
+ * near the middle: level is pitch at zero, and zero is not past anything. So
+ * this measures distance from a centre instead of position along a line, and
+ * `width` is how far still counts as there.
+ *
+ * The band it lets go at is wider than the one it takes hold at, for the same
+ * reason a gate's line moves: an object resting right on the edge of the band
+ * would otherwise flicker the control on and off. Held things get this treatment
+ * everywhere in this file.
+ */
+export function sampleNear(rawValue, transform, state) {
+  const width = Math.abs(transform.width);
+  const slack = width * GATE_HYSTERESIS_NEAR;
+  const limit = state.gateOn ? width + slack : width;
+  state.gateOn = Math.abs(rawValue - transform.center) <= limit;
   return state.gateOn ? 1 : 0;
 }
 
@@ -211,6 +249,16 @@ export function migrateTransformForSignal(transform, signal) {
   // a button loses the jack entirely and the wire is dropped by the engine.
   if (transform.type === 'range') {
     return signal.kind === 'number' ? { ...transform, ...signalRange(signal) } : transform;
+  }
+
+  if (transform.type === 'near') {
+    // Centre and width are raw, like a gate's threshold, so a range that widens
+    // leaves the band exactly where it was sitting.
+    if (signal.kind === 'number') return { ...transform, ...signalRange(signal) };
+    // A source that turns out to read only 0 or 1 has no middle to be near. Held
+    // near 1 is held while it is on, which is the pass-through.
+    if (signal.kind === 'binary') return { type: 'hold', invert: transform.center === 0 };
+    return transform; // event: the wire is dropped, having no hold output
   }
 
   if (transform.type === 'gate') {

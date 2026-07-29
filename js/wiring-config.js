@@ -51,6 +51,12 @@ const OUTPUTS = Object.freeze({
     { id: 'trigger', type: 'trigger', label: 'Trigger', hint: 'Fires when it crosses a threshold' },
     { id: 'hold-above', type: 'hold', label: 'Hold above', hint: 'On while the reading is past a threshold' },
     { id: 'hold-below', type: 'hold', label: 'Hold below', hint: 'On while the reading is under a threshold' },
+    // The two gated holds can only say "past a line", and some questions are
+    // about the middle rather than an end. "Is it lying flat" is the one that
+    // prompted this: level is pitch near zero, and neither a high nor a low
+    // threshold can express near — you would need both jacks wired to the same
+    // control and no way to say they must both be true.
+    { id: 'hold-near', type: 'hold', label: 'Hold near', hint: 'On while the reading is close to a value' },
     { id: 'level', type: 'level', label: 'Level', hint: 'The reading mapped across the control' },
   ],
 });
@@ -164,5 +170,7 @@ export function isValuePort(type) {
 // Everything else names a moment, and moments go to triggers.
 export function portTypeForTransform(type) {
   if (type === 'range') return 'level';
-  return type === 'gate' || type === 'hold' || type === 'facing' ? 'hold' : 'trigger';
+  return type === 'gate' || type === 'hold' || type === 'facing' || type === 'near'
+    ? 'hold'
+    : 'trigger';
 }

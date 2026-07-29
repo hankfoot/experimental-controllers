@@ -822,3 +822,96 @@ test('a saved bearing survives a reload and refuses a direction it does not offe
   assert.equal(saved(270).length, 1, 'a direction it does offer is read back');
   assert.deepEqual(saved(45), [], 'and one it does not is dropped');
 });
+
+// --- "Is it lying flat" -----------------------------------------------------
+// A gate asks which side of a line a reading is on, which cannot say "near the
+// middle": level is pitch at zero, and zero is not past anything.
+
+test('a near hold is on around its centre and off either side of it', () => {
+  const context = setup();
+  context.emit('pitch', 0);
+  const wire = context.engine.addConnection('pitch', { node: 'speed', port: 'hold' }, 'hold-near');
+
+  // pitch is -90..90, so it spans zero and the band centres there.
+  assert.equal(wire.transform.type, 'near');
+  assert.equal(wire.transform.center, 0);
+  context.engine.updateConnection(wire.id, { transform: { center: 0, width: 10 } });
+  context.calls.length = 0;
+
+  for (const [degrees, expected] of [[0, 1], [8, 1], [-8, 1], [40, 0], [-40, 0], [2, 1]]) {
+    context.calls.length = 0;
+    context.emit('pitch', degrees);
+    const last = context.calls.findLast(([name]) => name === 'value');
+    if (last) assert.equal(last[2], expected, `${degrees}° should be ${expected}`);
+  }
+});
+
+test('a near hold does not chatter on the edge of its band', () => {
+  const context = setup();
+  context.emit('pitch', 0);
+  const wire = context.engine.addConnection('pitch', { node: 'speed', port: 'hold' }, 'hold-near');
+  context.engine.updateConnection(wire.id, { transform: { center: 0, width: 10 } });
+  context.emit('pitch', 0); // clearly on
+  context.calls.length = 0;
+
+  // Resting right on 10°, which is where a band with no slack would flap.
+  for (const degrees of [10, 10.5, 9.5, 11, 10]) context.emit('pitch', degrees);
+  assert.deepEqual(context.calls.filter(([name]) => name === 'value'), [],
+    'nothing reported, because it never left');
+
+  // Properly outside, though, and it does let go.
+  context.emit('pitch', 30);
+  assert.deepEqual(context.calls.findLast(([name]) => name === 'value'),
+    ['value', 'speed.hold', 0]);
+});
+
+test('a near wire survives a reload', () => {
+  const storage = memoryStorage();
+  const first = setup(storage);
+  first.emit('pitch', 0);
+  const wire = first.engine.addConnection('pitch', { node: 'speed', port: 'hold' }, 'hold-near');
+  first.engine.updateConnection(wire.id, { transform: { center: 0, width: 12 } });
+
+  const second = setup(storage);
+  second.emit('pitch', 0);
+  const [restored] = second.engine.listConnections();
+  assert.equal(restored.transform.type, 'near', 'not dropped as unreadable');
+  assert.deepEqual(
+    { center: restored.transform.center, width: restored.transform.width },
+    { center: 0, width: 12 },
+  );
+});
+
+// A reading that only ever climbs has no meaningful middle, so it starts where
+// a gate would rather than at a zero it never reaches.
+test('a near hold on a one-sided reading centres on its midpoint', () => {
+  const context = setup();
+  context.emit('light', 0); // 0..255
+  const wire = context.engine.addConnection('light', { node: 'speed', port: 'hold' }, 'hold-near');
+  assert.equal(wire.transform.center, 127.5);
+});
+
+test('a saved near wire falls back to a pass-through on an on/off source', () => {
+  // btna is a declared on/off channel, so this wire was saved against a kind the
+  // registry disagrees with — there is no middle left to be near.
+  const stored = JSON.stringify({
+    version: 3,
+    games: {
+      test: [{
+        id: 'stale-near',
+        source: 'btna',
+        sourceKind: 'number',
+        target: { node: 'speed', port: 'hold' },
+        transform: { type: 'near', min: -90, max: 90, center: 0, width: 10 },
+      }],
+    },
+  });
+  const context = setup({ getItem: () => stored, setItem: () => {} });
+  context.emit('btna', 1);
+
+  const [migrated] = context.engine.listConnections();
+  assert.equal(migrated.transform.type, 'hold');
+  // Centred on zero means it was holding while the reading was *low*, so the
+  // pass-through it becomes has to be the inverted one to mean the same thing.
+  assert.equal(migrated.transform.invert, true);
+});

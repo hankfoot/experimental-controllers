@@ -237,6 +237,15 @@ export function normalizeTransform(value) {
     if (threshold == null || (value.direction !== 'above' && value.direction !== 'below')) return null;
     return { type: 'gate', ...span, direction: value.direction, threshold };
   }
+  // A band around a value: where the middle is, and how far off it still counts.
+  // A width of zero is a band nothing can be inside, so it is refused rather
+  // than saved as a hold that can never come on.
+  if (value.type === 'near') {
+    const center = finiteNumber(value.center);
+    const width = finiteNumber(value.width);
+    if (center == null || width == null || width <= 0) return null;
+    return { type: 'near', ...span, center, width };
+  }
   if (value.type === 'change') {
     const amount = finiteNumber(value.amount);
     return cooldownMs == null || amount == null

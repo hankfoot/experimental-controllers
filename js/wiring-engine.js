@@ -18,6 +18,7 @@ import {
   sampleFacing,
   sampleGate,
   sampleHold,
+  sampleNear,
   sampleRange,
   sampleTrigger,
 } from './wiring-runtime.js';
@@ -173,7 +174,9 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
     return runtime.get(id);
   }
 
-  const SAMPLERS = { facing: sampleFacing, gate: sampleGate, hold: sampleHold, range: sampleRange };
+  const SAMPLERS = {
+    facing: sampleFacing, gate: sampleGate, hold: sampleHold, near: sampleNear, range: sampleRange,
+  };
 
   function processValue(connection, value, now) {
     const { transform } = connection;
