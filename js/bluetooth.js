@@ -11,8 +11,9 @@
 // to a device it has already been given without asking again, and the retries
 // below are the difference between "it broke" and a couple of dropped frames.
 
-import { emitStatus } from './bus.js';
-import { createLineBuffer } from './line-protocol.js';
+import { emitStatus, emitInput } from './bus.js';
+import { createLineBuffer, parseLine } from './line-protocol.js';
+import { createContactSettle } from './contact-settle.js';
 
 // Nordic UART Service UUIDs. The micro:bit transmits on 6e400002; subscribing
 // to the Nordic example's opposite characteristic connects but yields no data.
@@ -42,7 +43,15 @@ let state = { state: 'disconnected' };
 // exist, or worse, one that does with a mangled number. The first partial line is
 // dropped instead. This came from the wire, where it showed up as a channel
 // called `pitpitch`; nothing about it was specific to the wire.
-const lines = createLineBuffer({ midStream: true });
+//
+// Contact bounce is taken out on the way in too, so everything downstream — the
+// live readout, the meters on the Controls page, and every wire — sees one press
+// rather than the dozens of edges a piece of foil actually produces. It belongs
+// here rather than in a wire, because a contact bounces because of what it is
+// made of, not because of what it is wired to. See js/contact-settle.js.
+const settled = createContactSettle({ emit: emitInput });
+
+const lines = createLineBuffer({ midStream: true, onLine: (raw) => parseLine(raw, settled) });
 
 function announce(next) {
   state = next;
@@ -91,8 +100,11 @@ async function openStream(target) {
   await txChar.startNotifications();
   txChar.addEventListener('characteristicvaluechanged', onNotify);
   // Anything left over belongs to a session that has ended; a line cut in half
-  // by a drop would otherwise be glued to the first line of the next one.
+  // by a drop would otherwise be glued to the first line of the next one. The
+  // same goes for a contact that was being held when the board went away — it is
+  // not held now, and there is no release coming to say so.
   lines.reset();
+  settled.reset();
 }
 
 /** Prompt the user to pick a micro:bit and start streaming its input. */

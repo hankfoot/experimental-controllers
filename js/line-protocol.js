@@ -79,12 +79,12 @@ export function createLineBuffer({ onLine = parseLine, midStream = false } = {})
  * onto the bus. Any channel name is valid; malformed lines are ignored so a
  * noisy starter can't crash the page.
  */
-export function parseLine(raw) {
+export function parseLine(raw, emit = emitInput) {
   const sep = raw.indexOf(':');
   if (sep <= 0) return; // no channel name — not part of the protocol
   const channel = raw.slice(0, sep).trim().toLowerCase();
   const encodedValue = raw.slice(sep + 1).trim();
   const value = Number(encodedValue);
   if (!channel || !encodedValue || !Number.isFinite(value)) return;
-  emitInput({ channel, value, raw });
+  emit({ channel, value, raw });
 }

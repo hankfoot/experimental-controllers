@@ -180,12 +180,6 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
     const sample = SAMPLERS[transform.type];
     if (!sample) return;
     const state = runtimeState(connection.id);
-    // A fresh reading supersedes any settle already in flight — a contact that
-    // comes back is a contact that was never really let go.
-    if (state.settleTimer != null) {
-      clearTimeout(state.settleTimer);
-      state.settleTimer = null;
-    }
     const output = sample(value, transform, state, now);
     // A reading that does not change the output is not worth reporting. Without
     // this a contact breaking mid-hold still announces itself — the value it
@@ -198,19 +192,6 @@ export function createWiringEngine({ signalStore, actions, storage, game } = {})
       notify({ type: 'activity', connectionId: connection.id, value: output, fired: false });
     }
 
-    // A held contact that is waiting out its settle has to be asked again, and
-    // nothing else will ask: the board sends a release once and then says
-    // nothing at all, so there is no next reading to carry it. This timer is the
-    // only thing standing between a deferred release and a contact latched on
-    // forever, which is why the release is a delay and never a condition on
-    // what arrives next — see sampleHold.
-    if (state.holdReleaseAt != null) {
-      const due = state.holdReleaseAt;
-      state.settleTimer = setTimeout(() => {
-        state.settleTimer = null;
-        processValue(connection, value, due);
-      }, Math.max(0, due - now));
-    }
   }
 
   // A port may fix its own pace instead of offering it, in which case the port
