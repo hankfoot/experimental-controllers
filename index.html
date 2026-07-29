@@ -84,7 +84,7 @@
 
   <div id="unsupported-banner" class="note wrap" hidden>
     This project requires <strong>Chrome</strong> or <strong>Edge</strong>. Connecting over Bluetooth
-    works on desktop and Android; connecting over the USB cable is desktop only.
+    works on desktop and Android.
   </div>
 
   <main class="wrap">
@@ -299,13 +299,12 @@ basic.forever(function () {
               </p>
               <!-- Written by js/builder.js when the picked inputs are ones the
                    radio struggles with. -->
-              <p class="builder-warn" id="wired-advice" role="status" hidden></p>
 
               <details class="how">
-                <summary>Connecting over Bluetooth</summary>
+                <summary>Connecting to your board</summary>
                 <div class="how-body">
                   <p>
-                    Pick <strong>Wireless</strong>. In the browser's Bluetooth list, choose the
+                    Press <strong>Connect</strong>. In the browser's Bluetooth list, choose the
                     <code>BBC micro:bit [·····]</code> that matches the five letters your board
                     scrolled. It will show a checkmark, and the top bar will swap Connect for your
                     board's name.
@@ -320,31 +319,6 @@ basic.forever(function () {
                 </div>
               </details>
 
-              <details class="how">
-                <summary>Connecting over the USB cable</summary>
-                <div class="how-body">
-                  <p>
-                    Pick <strong>Wired</strong>, then choose your micro:bit from the list of ports.
-                    It is usually the only one, and it stays connected until you unplug it.
-                  </p>
-                  <p>
-                    The cable carries far more readings a second than Bluetooth can, so this is the
-                    one to use if you have picked several live sensors. It also needs no battery.
-                    The trade is that you are attached to the computer.
-                  </p>
-                  <p class="how-warn">
-                    <strong>Only one program can hold the cable at a time.</strong> If MakeCode is
-                    still open in another tab, close that tab — or at least close its serial
-                    readout — before connecting here. A board that is already being read somewhere
-                    else will either not appear in the list or will connect and then send nothing.
-                  </p>
-                  <p>
-                    If it still refuses after that, the board needs a moment to let go: press the
-                    <strong>reset button</strong> on the back, or unplug the cable and plug it in
-                    again, then pick <strong>Wired</strong> once more.
-                  </p>
-                </div>
-              </details>
             </div>
           </li>
         </ol>

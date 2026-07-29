@@ -28,34 +28,17 @@ import { key } from './storage-keys.js';
 // exist rather than every call site carrying both writes.
 function scaffoldTop(connect) {
   return [
-    // Both of these are MakeCode's defaults. They are written out because "no
-    // data over the cable" is otherwise an unexplainable mystery in a workshop,
-    // and two lines is a cheap thing to be able to point at.
-    'serial.redirectToUSB()',
-    'serial.setBaudRate(BaudRate.BaudRate115200)',
+    // Bluetooth only, deliberately.
+    //
+    // There was a USB path here too, and every part of it was trouble. Writing
+    // to serial blocks once the transmit buffer fills with nothing draining it,
+    // which is the ordinary state of a board on a battery — so the board hung on
+    // the first reading it sent. Guarding that on a greeting from the browser
+    // meant a serial receive handler, and the board started rebooting instead.
+    // None of it bought anything the radio does not already do.
     'bluetooth.startUartService()',
     'let connected = false',
-    // Whether anything is actually reading the cable.
-    //
-    // serial.writeLine blocks once its transmit buffer fills and nothing is
-    // draining it, and "nothing is draining it" is the normal case: a board on a
-    // battery pack has no host at all. Writing unconditionally therefore hangs
-    // the board outright — it shows its name once and then stops forever, on the
-    // first reading it tries to send. Half-drained, it stalls in bursts instead,
-    // which is what arrives as an input that chatters.
-    //
-    // So the cable gets the same treatment the radio already had. The browser
-    // says hello down the wire when it opens the port, and until it does, the
-    // cable is not written to. Guarding this on `connected` instead is what
-    // broke wired sessions before — that flag only ever means Bluetooth.
-    'let wired = false',
-    'serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {',
-    '    wired = true',
-    '})',
     'function send (line: string) {',
-    '    if (wired) {',
-    '        serial.writeLine(line)',
-    '    }',
     '    if (connected) {',
     '        bluetooth.uartWriteLine(line)',
     '    }',
@@ -89,11 +72,9 @@ function binary(channel, expr) {
 /**
  * A top-level event handler.
  *
- * This used to wrap every body in `if (connected)`. It had to stop: `connected`
- * only ever becomes true when a *Bluetooth* browser attaches, so with the guard
- * still here a session over the USB cable would fire every handler and send
- * absolutely nothing. Whether the radio is listening is now `send`'s business,
- * and it is asked once rather than at every call site.
+ * This used to wrap every body in `if (connected)` as well. Whether the radio is
+ * listening is `send`'s business, asked once there rather than at every call
+ * site, which is what keeps a handler to the reading it reports.
  */
 function handler(open, body) {
   return [open, ...body.map((l) => '    ' + l), '})'];
@@ -454,7 +435,6 @@ const STREAM_HEAVY = 8; // stronger warning
 // above on purpose: those say "this is too much for the radio", and by then the
 // useful advice has already been missed. This one says "there is an easier way
 // to run what you have picked" while there is still time to take it.
-const WIRED_WORTH_IT = 3;
 
 // Which inputs you picked is the shape of the physical thing you built, so it
 // has to outlast a refresh — the wiring on the Game screen is keyed to these
@@ -505,7 +485,7 @@ export function saveBuilderSelection(value) {
 }
 
 export function initBuilder({
-  grid, codeEl, stepsEl, warnEl, wiredEl, clearBtn, onChange = () => {},
+  grid, codeEl, stepsEl, warnEl, clearBtn, onChange = () => {},
 }) {
   const { selected, pinModes } = loadSelection();
 
@@ -569,31 +549,6 @@ export function initBuilder({
     }
   }
 
-  /**
-   * Suggests the cable, down beside the button that offers it.
-   *
-   * Only when there are live readings in the build: those are the ones that
-   * stream ten times a second and are what actually saturates the radio. A
-   * controller made of buttons and gestures is fine wirelessly however many of
-   * them there are, and telling somebody to plug in for that is advice that
-   * costs them the thing the workshop is about.
-   */
-  function renderWiredAdvice() {
-    if (!wiredEl) return;
-    const { streamed, weight } = streamLoad(selected, pinModes);
-    if (streamed < WIRED_WORTH_IT) {
-      wiredEl.hidden = true;
-      return;
-    }
-    wiredEl.hidden = false;
-    // Deliberately quieter than the load warning at its own threshold: this is a
-    // suggestion about which cable to use, not a report that something is wrong.
-    wiredEl.dataset.level = weight >= STREAM_HEAVY ? 'heavy' : 'busy';
-    const readings = `${streamed} live reading${streamed > 1 ? 's' : ''}`;
-    wiredEl.innerHTML = `🔌 You picked ${readings}, which stream constantly. <strong>Connect over the
-      USB cable</strong> if you can — the cable carries them comfortably, where Bluetooth may not.`;
-  }
-
   function renderWarning() {
     if (!warnEl) return;
     const { streamed, pressed, weight } = streamLoad(selected, pinModes);
@@ -633,7 +588,6 @@ export function initBuilder({
     if (clearBtn) clearBtn.disabled = selected.size === 0;
     codeEl.textContent = generateCode(selected, pinModes);
     renderWarning();
-    renderWiredAdvice();
 
     const notes = [];
     for (const input of INPUTS) {

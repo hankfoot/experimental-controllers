@@ -1,10 +1,7 @@
 // Entry point — wires the UI together.
 
 import { onStatus, onInput } from './bus.js';
-import {
-  TRANSPORTS, activeVia, connect, disconnect, supported, anySupported,
-} from './connection.js';
-import { placeUnder } from './anchor.js';
+import { activeVia, connect, disconnect, isSupported } from './connection.js';
 import { initVisualizer } from './visualizer.js';
 import { initBuilder } from './builder.js';
 import { initGame } from './game.js';
@@ -76,7 +73,6 @@ const builder = initBuilder({
   codeEl: document.getElementById('builder-code'),
   stepsEl: document.getElementById('builder-steps'),
   warnEl: document.getElementById('builder-warning'),
-  wiredEl: document.getElementById('wired-advice'),
   clearBtn: document.getElementById('builder-clear'),
   onChange: ({ channels }) => signalStore.setPlannedChannels(channels),
 });
@@ -147,7 +143,7 @@ document.querySelectorAll('.code-copy').forEach((btn) => {
 });
 
 // --- Browser support banner ------------------------------------------------
-if (!anySupported()) {
+if (!isSupported()) {
   document.getElementById('unsupported-banner').hidden = false;
 }
 
@@ -254,7 +250,6 @@ function paint({ state, message, retrying = false }) {
   } else {
     signalLabel.textContent = LABELS[state] ?? 'Not Connected';
   }
-  if (connected) openMenu(false);
   if (connected && wasFocused === connectBtn) signalToggle.focus();
   if (!connected && wasFocused === disconnectBtn) connectBtn.focus();
 }
@@ -284,56 +279,14 @@ setInterval(() => {
   if (quiet && showing === 'connected' && expectsStream()) paint({ state: 'stale' });
 }, 1000);
 
-// --- Picking how to connect --------------------------------------------------
-// Two ways in, so Connect asks which. Built here rather than in the markup
-// because what it offers depends on the browser — Web Serial is Chromium
-// desktop only, while Web Bluetooth also works on Android, so a phone honestly
-// has one choice and is not asked to make it.
-//
-// It hangs off Connect, which moves: the button swaps with Disconnect and the
-// bar reflows at narrow widths. That is why it is anchored rather than parked
-// in a corner like the live-input popover, and why it lives on `document.body`
-// rather than in the bar — a popover inside a flex row gets clipped by it.
-const connectMenu = document.createElement('div');
-connectMenu.className = 'connect-menu';
-connectMenu.setAttribute('role', 'menu');
-connectMenu.hidden = true;
-document.body.appendChild(connectMenu);
+// --- Connecting --------------------------------------------------------------
+// One way in, so Connect just connects. There was a menu here offering Bluetooth
+// or the USB cable; the cable is gone (see js/connection.js) and a menu with one
+// item is a question with a single answer.
 
-for (const transport of TRANSPORTS) {
-  const item = document.createElement('button');
-  item.type = 'button';
-  item.className = 'connect-option';
-  item.setAttribute('role', 'menuitem');
-  const glyph = document.createElement('span');
-  glyph.className = 'connect-glyph';
-  glyph.setAttribute('aria-hidden', 'true');
-  glyph.textContent = transport.emoji;
-  const name = document.createElement('strong');
-  name.textContent = transport.label;
-  const hint = document.createElement('span');
-  hint.textContent = transport.module.isSupported()
-    ? transport.hint
-    : 'Not available in this browser.';
-  item.append(glyph, name, hint);
-  item.disabled = !transport.module.isSupported();
-  item.addEventListener('click', () => {
-    openMenu(false);
-    start(transport.id);
-  });
-  connectMenu.appendChild(item);
-}
-
-function openMenu(open) {
-  connectMenu.hidden = !open;
-  connectBtn.setAttribute('aria-expanded', String(open));
-  // Measured while it is showing: a hidden element has no size to centre on.
-  if (open) placeUnder(connectBtn, connectMenu);
-}
-
-async function start(id) {
+async function start() {
   try {
-    await connect(id);
+    await connect();
   } catch (err) {
     // The chooser being dismissed throws, and is not a failure — the transport
     // has already put the previous status back.
@@ -341,25 +294,5 @@ async function start(id) {
   }
 }
 
-connectBtn.setAttribute('aria-haspopup', 'menu');
-connectBtn.setAttribute('aria-expanded', 'false');
-connectBtn.addEventListener('click', () => {
-  const choices = supported();
-  // One live option and one greyed one is a question with a single answer, so
-  // it isn't asked. This is the real case on Android.
-  if (choices.length === 1) {
-    start(choices[0].id);
-    return;
-  }
-  openMenu(connectMenu.hidden);
-});
-
+connectBtn.addEventListener('click', () => start());
 disconnectBtn.addEventListener('click', () => disconnect());
-
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openMenu(false); });
-document.addEventListener('click', (e) => {
-  if (connectMenu.hidden) return;
-  if (connectMenu.contains(e.target) || connectBtn.contains(e.target)) return;
-  openMenu(false);
-});
-window.addEventListener('resize', () => openMenu(false));

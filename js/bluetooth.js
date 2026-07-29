@@ -36,7 +36,13 @@ let attempt = 0;
 // being dismissed, most of all — can put it back rather than inventing one.
 let state = { state: 'disconnected' };
 
-const lines = createLineBuffer();
+// `midStream`, because subscribing does not make the board start a fresh line —
+// it is already running, and the first notification can land halfway through one.
+// Parsed as though it were whole, that half arrives as a channel that does not
+// exist, or worse, one that does with a mangled number. The first partial line is
+// dropped instead. This came from the wire, where it showed up as a channel
+// called `pitpitch`; nothing about it was specific to the wire.
+const lines = createLineBuffer({ midStream: true });
 
 function announce(next) {
   state = next;

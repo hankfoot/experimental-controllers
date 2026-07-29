@@ -7,43 +7,33 @@ const MODES = { p0: 'touch', p1: 'touch', p2: 'touch' };
 const code = (ids, modes = MODES) => generateCode(new Set(ids), modes);
 const count = (text, needle) => text.split(needle).length - 1;
 
-// Everything below is about one property: the program that gets flashed has to
-// work over the USB cable and over Bluetooth, without being reflashed to swap.
+// Everything below is about one property: the flashed program reports over the
+// radio, and touches nothing else.
 
 test('every reading is written through one send, and only send touches the radio', () => {
   const program = code(['btna', 'pitch', 'shake', 'p0']);
 
   assert.equal(count(program, 'function send'), 1, 'defined exactly once');
-  // The one permitted mention is inside send's own body. Anywhere else is a
-  // reading that a wired session would silently never receive.
   assert.equal(count(program, 'bluetooth.uartWriteLine('), 1);
-  assert.equal(count(program, 'serial.writeLine('), 1);
   const inSend = program.slice(program.indexOf('function send'), program.indexOf('\n}\n', program.indexOf('function send')));
-  assert.ok(inSend.includes('bluetooth.uartWriteLine(line)'));
-  assert.ok(inSend.includes('serial.writeLine(line)'));
+  assert.ok(/if \(connected\) \{\s*\n\s*bluetooth\.uartWriteLine\(line\)/.test(inSend),
+    'and only once a browser has attached');
 });
 
-// The cable used to be written unconditionally, and a test asserted it. That is
-// what hung the board: serial.writeLine blocks once its buffer fills with
-// nothing draining it, which is the normal state of a board on a battery. It
-// showed its name once and stopped on the first reading it tried to send.
+// The board wrote to USB serial as well as the radio, and every part of that was
+// trouble. Writing blocks once the transmit buffer fills with nothing draining
+// it — the ordinary state of a board on a battery — so the board hung on the
+// first reading it sent. Guarding the write on a greeting from the browser meant
+// a serial receive handler, and then the board rebooted in a loop instead.
 //
-// Each transport now waits to be spoken to. `connected` is Bluetooth's and must
-// not be reused for the cable — doing that is what broke wired sessions before.
-test('neither transport is written to until something is listening', () => {
-  const program = code(['btna', 'pitch']);
+// Nothing in the generated program may touch serial again without that history
+// being reckoned with, so this is pinned rather than left to be re-added by
+// someone who wants the cable back.
+test('the flashed program does not touch serial at all', () => {
+  const program = code(INPUTS.map((input) => input.id));
 
-  const send = program.slice(program.indexOf('function send'), program.indexOf('\n}\n', program.indexOf('function send')));
-  assert.ok(/if \(wired\) \{\s*\n\s*serial\.writeLine\(line\)/.test(send),
-    'the cable is written only once a reader has said hello');
-  assert.ok(/if \(connected\) \{\s*\n\s*bluetooth\.uartWriteLine\(line\)/.test(send),
-    'and the radio only once a browser has attached');
-
-  assert.ok(program.includes('let wired = false'), 'and it starts closed, so a battery board never blocks');
-  // Delimiters, plural — the singular is not a name MakeCode has, and the whole
-  // program fails to compile on it.
-  assert.ok(program.includes('serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {'),
-    'with the greeting from the browser being what opens it');
+  assert.ok(!program.includes('serial.'), 'no serial calls');
+  assert.ok(!program.includes('wired'), 'and no leftover handshake for one');
 });
 
 // The guard used to wrap every handler body and the loop. `connected` only ever
@@ -73,11 +63,6 @@ test('the board name is scrolled once at startup, never inside the loop', () => 
   );
 });
 
-test('the cable is set up explicitly, so "no data over USB" is never a mystery', () => {
-  const program = code(['btna']);
-  assert.ok(program.includes('serial.redirectToUSB()'));
-  assert.ok(program.includes('serial.setBaudRate(BaudRate.BaudRate115200)'));
-});
 
 // MakeCode can only show the program as blocks if it can decompile it, which is
 // why the whole file avoids ternaries. `send` is the one function it defines.
