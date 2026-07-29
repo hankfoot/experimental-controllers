@@ -35,8 +35,27 @@ function scaffoldTop(connect) {
     'serial.setBaudRate(BaudRate.BaudRate115200)',
     'bluetooth.startUartService()',
     'let connected = false',
+    // Whether anything is actually reading the cable.
+    //
+    // serial.writeLine blocks once its transmit buffer fills and nothing is
+    // draining it, and "nothing is draining it" is the normal case: a board on a
+    // battery pack has no host at all. Writing unconditionally therefore hangs
+    // the board outright — it shows its name once and then stops forever, on the
+    // first reading it tries to send. Half-drained, it stalls in bursts instead,
+    // which is what arrives as an input that chatters.
+    //
+    // So the cable gets the same treatment the radio already had. The browser
+    // says hello down the wire when it opens the port, and until it does, the
+    // cable is not written to. Guarding this on `connected` instead is what
+    // broke wired sessions before — that flag only ever means Bluetooth.
+    'let wired = false',
+    'serial.onDataReceived(serial.delimiters(Delimiter.NewLine), function () {',
+    '    wired = true',
+    '})',
     'function send (line: string) {',
-    '    serial.writeLine(line)',
+    '    if (wired) {',
+    '        serial.writeLine(line)',
+    '    }',
     '    if (connected) {',
     '        bluetooth.uartWriteLine(line)',
     '    }',

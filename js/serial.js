@@ -95,9 +95,34 @@ async function openStream(target) {
     }
   }
   await target.open({ baudRate: BAUD });
+  await greet(target);
   // Deliberately not awaited: it runs until the stream ends, and awaiting it
   // would mean `connect` never resolving.
   pump(target);
+}
+
+/**
+ * Tell the board someone is reading the cable.
+ *
+ * Until this arrives the board deliberately writes nothing to serial, because
+ * writing into a buffer nobody drains blocks — a board on a battery pack would
+ * hang on its first reading. So an open port that never says hello is a silent
+ * one, and this line is what starts the stream.
+ *
+ * Failing to write is not worth failing the connection over: a board flashed
+ * with an older program ignores the greeting and streams regardless, and that
+ * should keep working rather than becoming an error nobody can act on.
+ */
+async function greet(target) {
+  if (!target.writable) return;
+  const writer = target.writable.getWriter();
+  try {
+    await writer.write(new TextEncoder().encode('hello\n'));
+  } catch {
+    /* older program, or a port that will not take input; the read side stands */
+  } finally {
+    writer.releaseLock();
+  }
 }
 
 /** Prompt the user to pick a port and start streaming its input. */

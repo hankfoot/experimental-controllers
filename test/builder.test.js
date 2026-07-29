@@ -17,9 +17,31 @@ test('every reading is written through one send, and only send touches the radio
   // The one permitted mention is inside send's own body. Anywhere else is a
   // reading that a wired session would silently never receive.
   assert.equal(count(program, 'bluetooth.uartWriteLine('), 1);
-  const inSend = program.slice(program.indexOf('function send'), program.indexOf('}\n', program.indexOf('function send')));
+  assert.equal(count(program, 'serial.writeLine('), 1);
+  const inSend = program.slice(program.indexOf('function send'), program.indexOf('\n}\n', program.indexOf('function send')));
   assert.ok(inSend.includes('bluetooth.uartWriteLine(line)'));
-  assert.ok(inSend.includes('serial.writeLine(line)'), 'and the cable is written unconditionally');
+  assert.ok(inSend.includes('serial.writeLine(line)'));
+});
+
+// The cable used to be written unconditionally, and a test asserted it. That is
+// what hung the board: serial.writeLine blocks once its buffer fills with
+// nothing draining it, which is the normal state of a board on a battery. It
+// showed its name once and stopped on the first reading it tried to send.
+//
+// Each transport now waits to be spoken to. `connected` is Bluetooth's and must
+// not be reused for the cable — doing that is what broke wired sessions before.
+test('neither transport is written to until something is listening', () => {
+  const program = code(['btna', 'pitch']);
+
+  const send = program.slice(program.indexOf('function send'), program.indexOf('\n}\n', program.indexOf('function send')));
+  assert.ok(/if \(wired\) \{\s*\n\s*serial\.writeLine\(line\)/.test(send),
+    'the cable is written only once a reader has said hello');
+  assert.ok(/if \(connected\) \{\s*\n\s*bluetooth\.uartWriteLine\(line\)/.test(send),
+    'and the radio only once a browser has attached');
+
+  assert.ok(program.includes('let wired = false'), 'and it starts closed, so a battery board never blocks');
+  assert.ok(program.includes('serial.onDataReceived(serial.delimiters(Delimiter.NewLine), function () {'),
+    'with the greeting from the browser being what opens it');
 });
 
 // The guard used to wrap every handler body and the loop. `connected` only ever
