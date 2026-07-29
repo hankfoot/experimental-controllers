@@ -6,7 +6,11 @@ import { channelInfo, channelKind, isBinaryValue } from './channels.js';
 
 function mergeKind(current, next) {
   if (!next || current === next) return current;
-  if (current === 'event' || next === 'event') return current;
+  // A bearing reads as a plain number on the wire, so only the registry knows it
+  // is one — an inferred kind must never talk it back down into a number, or the
+  // wrap-aware jacks would silently become linear ones.
+  if (current === 'event' || next === 'event' || current === 'bearing') return current;
+  if (next === 'bearing') return next;
   return current === 'number' || next === 'number' ? 'number' : 'binary';
 }
 
@@ -30,6 +34,8 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
       // A channel invented in MakeCode has neither, and simply says less.
       desc: info.desc ?? null,
       unit: info.unit ?? null,
+      // What to call this reading mid-sentence, when that isn't its label.
+      subject: info.subject ?? null,
       // How a gesture reads mid-sentence, for the ones that have a set wording.
       phrase: info.phrase ?? null,
       kind: info.kind ?? kind,
@@ -47,6 +53,9 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
       // What it physically is: a button, a logo, a pad, a switch. Decides how
       // it reads in a sentence, since all four send the same 1s and 0s.
       form: null,
+      // Where this input sits on the Sensing page, so the wiring board can list
+      // the inputs you picked in the order that page listed them.
+      order: null,
       lastSeen: 0,
     };
     signals.set(channel, signal);
@@ -93,13 +102,17 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
     notify('value', signal);
   }
 
-  function reconcileFlag(flag, descriptors) {
-    signals.forEach((signal) => { signal[flag] = false; });
-    for (const descriptor of descriptors) {
+  function reconcileFlag(flag, descriptors, { ordered = false } = {}) {
+    signals.forEach((signal) => {
+      signal[flag] = false;
+      if (ordered) signal.order = null;
+    });
+    for (const [index, descriptor] of descriptors.entries()) {
       const channel = typeof descriptor === 'string' ? descriptor : descriptor.channel;
       const kind = typeof descriptor === 'string' ? undefined : descriptor.kind;
       const signal = ensure(channel, kind);
       signal[flag] = true;
+      if (ordered) signal.order = index;
       // Only the side that owns the choice sets it, so a live sample arriving
       // for a planned pin never blanks out the mode it was planned as.
       if (typeof descriptor === 'object' && descriptor.mode !== undefined) {
@@ -122,7 +135,7 @@ export function createSignalStore({ subscribeInput = onInput, now = () => perfor
       return () => listeners.delete(listener);
     },
     setPlannedChannels(descriptors) {
-      reconcileFlag('planned', descriptors);
+      reconcileFlag('planned', descriptors, { ordered: true });
     },
     setWiredChannels(descriptors) {
       reconcileFlag('wired', descriptors);

@@ -9,7 +9,7 @@
 //   targets                             wiring ports, fixed per control scheme
 //   controls                            manual keyboard/button fallbacks
 //   createEngine(random)                a BaseGame subclass instance
-//   createRenderer(ctx, helpers)        returns render(state, now)
+//   createRenderer(ctx, helpers, look)  returns render(state, now)
 
 import { RULES, SCHEMES, SidescrollerGame, createRenderer } from './sidescroller.js';
 
@@ -17,7 +17,7 @@ export const GAMES = Object.freeze(SCHEMES.map((scheme) => Object.freeze({
   ...scheme,
   rules: RULES,
   createEngine: (random) => new SidescrollerGame(random, scheme.motion),
-  createRenderer: (ctx, helpers) => createRenderer(ctx, helpers, scheme),
+  createRenderer: (ctx, helpers, look) => createRenderer(ctx, helpers, scheme, look),
 })));
 
 export const DEFAULT_GAME_ID = GAMES[0].id;

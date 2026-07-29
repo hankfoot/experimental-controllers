@@ -2,13 +2,14 @@
 // connections, keyed by game id, so switching games never disturbs the wiring
 // you set up for another one.
 
-import { findPort, portTypeForTransform } from './wiring-config.js';
+import { findPort, isBearing, portTypeForTransform } from './wiring-config.js';
+import { key } from './storage-keys.js';
 
 // v3 split the single "value" connector into a level and a hold, which changed
 // both the shape of a saved transform and what a jack is called. Nothing from
 // v2 can be read as either one with confidence, so the old key is simply left
 // behind and the board opens empty.
-const STORAGE_KEY = 'experimental-game-controllers:wiring:v3';
+const STORAGE_KEY = key('wiring', 'v3');
 const CONFIG_VERSION = 3;
 
 export function browserStorage() {
@@ -51,7 +52,7 @@ export function saveConnections(storage, gameId, connections) {
 // What each jack is set to before anything is patched into it. These belong to
 // the input rather than to any one game, so they are stored flat rather than
 // under a game id.
-const DRAFT_KEY = 'experimental-game-controllers:jacks:v2';
+const DRAFT_KEY = key('jacks', 'v2');
 
 export function loadDrafts(storage) {
   const drafts = new Map();
@@ -77,32 +78,56 @@ export function saveDrafts(storage, drafts) {
   }
 }
 
-// How often a control will act on whatever reaches it, held per port so the
-// pacing is there to read and set before a wire exists — and still there after
-// one is cut. Just a number of milliseconds; the wire's own transform is what
-// actually carries it once something is patched in.
-const PACE_KEY = 'experimental-game-controllers:ports:v1';
+// How a control will act on whatever reaches it, held per port so the setting
+// is there to read before a wire exists — and still there after one is cut. Two
+// ports answer that differently and each keeps only its own answer:
+//   cooldownMs — how often a trigger will let itself be fired
+//   smoothing  — how closely a level follows the reading driving it
+// The wire's own transform is what actually carries these once something is
+// patched in; this is only what an empty port says, and what the next wire to
+// land on it starts from.
+//
+// Saved payloads were a bare number back when pacing was the only thing a port
+// held, so a lone number still reads as the pace it was.
+const PORT_KEY = key('ports', 'v1');
 
-export function loadPortPaces(storage) {
-  const paces = new Map();
+const PORT_SETTINGS = Object.freeze({
+  cooldownMs: (value) => value >= 0,
+  smoothing: (value) => value >= 0 && value < 1,
+});
+
+/** Whether a value is one this port setting is allowed to hold. */
+export function isPortSetting(name, value) {
+  const accepts = PORT_SETTINGS[name];
+  return Boolean(accepts) && finiteNumber(value) != null && accepts(value);
+}
+
+export function loadPortDefaults(storage) {
+  const defaults = new Map();
   let saved = null;
   try {
-    saved = JSON.parse(storage?.getItem(PACE_KEY) ?? 'null');
+    saved = JSON.parse(storage?.getItem(PORT_KEY) ?? 'null');
   } catch {
-    return paces;
+    return defaults;
   }
-  if (!isRecord(saved)) return paces;
+  if (!isRecord(saved)) return defaults;
   for (const [key, value] of Object.entries(saved)) {
-    const cooldownMs = finiteNumber(value);
-    if (cooldownMs != null && cooldownMs >= 0) paces.set(key, cooldownMs);
+    const stored = isRecord(value) ? value : { cooldownMs: value };
+    const settings = {};
+    for (const name of Object.keys(PORT_SETTINGS)) {
+      if (isPortSetting(name, stored[name])) settings[name] = stored[name];
+    }
+    // A port that kept nothing readable is a port with nothing saved, so it
+    // falls back to the same defaults an untouched one gets.
+    if (Object.keys(settings).length) defaults.set(key, settings);
   }
-  return paces;
+  return defaults;
 }
 
 // How each control is set up, per game — the choices a game offers about what
 // its own ports do with what they're given. Stored under the game id, like the
 // connections, since the ports belong to the game.
-const OPTION_KEY = 'experimental-game-controllers:controls:v1';
+const OPTION_KEY = key('controls', 'v1');
 
 export function loadPortOptions(storage, gameId) {
   try {
@@ -111,6 +136,48 @@ export function loadPortOptions(storage, gameId) {
     return isRecord(forGame) ? forGame : {};
   } catch {
     return {};
+  }
+}
+
+/**
+ * Every game's wiring at once. Only an exported bundle wants this — a file that
+ * carried the drawings and the course but not the wiring handed somebody a game
+ * that looked right and answered to nothing.
+ */
+export function loadAllConnections(storage) {
+  return readAll(storage);
+}
+
+export function saveAllConnections(storage, games) {
+  try {
+    storage?.setItem(STORAGE_KEY, JSON.stringify({
+      version: CONFIG_VERSION,
+      games: isRecord(games) ? games : {},
+    }));
+  } catch {
+    // Persistence may be blocked; the wiring still works for this session.
+  }
+}
+
+/**
+ * Every game's options at once. Only an exported theme wants these — it carries
+ * the course you set up along with the look of it, since the two together are
+ * what somebody actually made.
+ */
+export function loadAllPortOptions(storage) {
+  try {
+    const saved = JSON.parse(storage?.getItem(OPTION_KEY) ?? 'null');
+    return isRecord(saved) ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveAllPortOptions(storage, games) {
+  try {
+    storage?.setItem(OPTION_KEY, JSON.stringify(isRecord(games) ? games : {}));
+  } catch {
+    // Persistence may be blocked; the controls still work for this session.
   }
 }
 
@@ -125,9 +192,9 @@ export function savePortOptions(storage, gameId, options) {
   }
 }
 
-export function savePortPaces(storage, paces) {
+export function savePortDefaults(storage, defaults) {
   try {
-    storage?.setItem(PACE_KEY, JSON.stringify(Object.fromEntries(paces)));
+    storage?.setItem(PORT_KEY, JSON.stringify(Object.fromEntries(defaults)));
   } catch {
     // Persistence may be blocked; the ports still work for this session.
   }
@@ -149,6 +216,15 @@ export function normalizeTransform(value) {
   if (value.type === 'hold') {
     const invert = value.invert === undefined ? false : value.invert;
     return typeof invert === 'boolean' ? { type: 'hold', invert } : null;
+  }
+  // A bearing carries only which way it is asking about. A saved direction that
+  // isn't one of the offered ones is refused rather than snapped to the nearest,
+  // the same as any other unreadable setting.
+  if (value.type === 'facing' || value.type === 'faces') {
+    const bearing = finiteNumber(value.bearing);
+    if (bearing == null || !isBearing(bearing)) return null;
+    if (value.type === 'facing') return { type: 'facing', bearing };
+    return cooldownMs == null ? null : { type: 'faces', bearing, cooldownMs };
   }
 
   // Everything that compares raw readings carries a bare span and no invert:
@@ -210,7 +286,7 @@ function isRecord(value) {
 }
 
 function isSignalKind(value) {
-  return value === 'event' || value === 'binary' || value === 'number';
+  return value === 'event' || value === 'binary' || value === 'number' || value === 'bearing';
 }
 
 function finiteNumber(value) {

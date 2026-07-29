@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { createSignalStore } from '../js/signal-store.js';
 import { createWiringEngine } from '../js/wiring-engine.js';
+import { key } from '../js/storage-keys.js';
+import { memoryStorage } from './helpers/memory-storage.js';
 
 // A stand-in game with one of each port type. The wiring engine is generic, so
 // these names are arbitrary — that is exactly what these tests pin down.
@@ -25,6 +27,14 @@ const TEST_GAME = {
       emoji: '↻',
       description: 'test',
       ports: [{ id: 'trigger', label: 'Trigger', type: 'trigger' }],
+    },
+    {
+      id: 'fixed',
+      label: 'Fixed',
+      emoji: '⏱️',
+      description: 'test',
+      // Fixes its own pace instead of offering it, the way a restart does.
+      ports: [{ id: 'trigger', label: 'Trigger', type: 'trigger', pace: 1000 }],
     },
     {
       id: 'speed',
@@ -85,14 +95,6 @@ function setup(storage = null, { useBrowserStorage = false, game = TEST_GAME } =
   };
 }
 
-function memoryStorage() {
-  const saved = new Map();
-  return {
-    saved,
-    getItem: (key) => saved.get(key) ?? null,
-    setItem: (key, value) => saved.set(key, value),
-  };
-}
 
 test('value wires update before same-sample triggers regardless of insertion order', () => {
   const context = setup();
@@ -289,6 +291,31 @@ test('numeric threshold crossings honor each wire cooldown', () => {
   );
 });
 
+// A port that fixes its own pace is the only place that number lives. Saved
+// wiring carrying a faster one — set before the port fixed it, or under a game
+// that offered the choice — must not be what actually runs, since nothing on
+// screen would admit to it.
+test('a port that fixes its pace overrides the one saved on the wire', () => {
+  const context = setup();
+  context.emit('light', 0, 0);
+  const connection = context.engine.addConnection('light', { node: 'fixed', port: 'trigger' });
+  context.engine.updateConnection(connection.id, { transform: { cooldownMs: 0 } });
+
+  // Four crossings inside one second: the wire says every one of them may fire,
+  // the port says one of them may.
+  context.emit('light', 0, 100);
+  context.emit('light', 255, 200);
+  context.emit('light', 0, 250);
+  context.emit('light', 255, 300);
+  context.emit('light', 0, 500);
+  context.emit('light', 255, 700);
+
+  assert.equal(
+    context.calls.filter(([name, port]) => name === 'fire' && port === 'fixed.trigger').length,
+    1,
+  );
+});
+
 test('repeated custom event samples can each trigger', () => {
   const context = setup();
   context.emit('custom', 1, 0);
@@ -333,6 +360,51 @@ test('unwired value ports fall back to their declared default', () => {
   assert.deepEqual(
     context.calls.findLast(([name, port]) => name === 'value' && port === 'speed.level'),
     ['value', 'speed.level', 0.5],
+  );
+});
+
+// A board that walks out of range sends no release — there is nothing left to
+// send it with — so the last thing it said stays true until somebody says
+// otherwise. This is somebody saying otherwise.
+test('losing the board lets go of everything a wire was holding', () => {
+  const context = setup();
+  context.emit('btna', 0);
+  context.emit('light', 0);
+  context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
+  context.engine.addConnection('light', { node: 'speed', port: 'level' });
+  context.emit('btna', 1);
+  context.emit('light', 255);
+  context.calls.length = 0;
+
+  context.engine.release();
+
+  assert.deepEqual(
+    context.calls.findLast(([name, port]) => name === 'value' && port === 'speed.hold'),
+    ['value', 'speed.hold', 0],
+  );
+  assert.deepEqual(
+    context.calls.findLast(([name, port]) => name === 'value' && port === 'speed.level'),
+    ['value', 'speed.level', 0.5],
+  );
+});
+
+test('a released gate does not remember which side of the line it was on', () => {
+  const context = setup();
+  context.emit('light', 0);
+  const connection = context.engine.addConnection('light', { node: 'speed', port: 'hold' }, 'hold');
+  context.engine.updateConnection(connection.id, {
+    transform: { type: 'gate', min: 0, max: 255, direction: 'above', threshold: 128 },
+  });
+  context.emit('light', 255); // over the line and holding
+  context.engine.release();
+  context.calls.length = 0;
+
+  // Back at the same reading, the gate has to take hold again from scratch
+  // rather than carrying its old state across the gap.
+  context.emit('light', 255);
+  assert.deepEqual(
+    context.calls.findLast(([name, port]) => name === 'value' && port === 'speed.hold'),
+    ['value', 'speed.hold', 1],
   );
 });
 
@@ -489,58 +561,60 @@ test('trigger thresholds are read in the signal\'s own units', () => {
   );
 });
 
-// --- Dropped-tick filtering -------------------------------------------------
-// The micro:bit polls every on/off input inside a 100 ms loop, so these tests
-// step time in 100 ms ticks: that is the resolution the browser actually sees.
+// Smoothing is measured against elapsed time, not against samples. Per sample,
+// the same setting meant whatever the input's rate happened to be — barely
+// anything on a fast input, which is exactly where it was needed most.
+test('smoothing means the same thing however fast the readings arrive', () => {
+  const slow = setup();
+  slow.emit('light', 0, 0);
+  const wire = slow.engine.addConnection('light', { node: 'speed', port: 'level' });
+  slow.engine.updateConnection(wire.id, {
+    transform: { type: 'range', min: 0, max: 255, invert: false, smoothing: 0.6 },
+  });
 
-test('a held pad survives a single dropped tick', () => {
+  // One second of a board polling ten times a second.
+  for (let i = 1; i <= 10; i += 1) slow.emit('light', 255, i * 100);
+  const after = slow.calls.findLast(([name]) => name === 'value')[2];
+
+  // The same second, at sixty samples. It must land in the same place, not
+  // sixty times further along.
+  const fast = setup();
+  fast.emit('light', 0, 0);
+  const other = fast.engine.addConnection('light', { node: 'speed', port: 'level' });
+  fast.engine.updateConnection(other.id, {
+    transform: { type: 'range', min: 0, max: 255, invert: false, smoothing: 0.6 },
+  });
+  for (let i = 1; i <= 60; i += 1) fast.emit('light', 255, i * (1000 / 60));
+  const alsoAfter = fast.calls.findLast(([name]) => name === 'value')[2];
+
+  assert.ok(Math.abs(after - alsoAfter) < 0.02,
+    `same second of readings should land together: ${after} vs ${alsoAfter}`);
+  assert.ok(after > 0.9, 'and both should have most of the way there');
+});
+
+test('no smoothing follows the reading exactly', () => {
+  const context = setup();
+  context.emit('light', 0, 0);
+  context.engine.addConnection('light', { node: 'speed', port: 'level' });
+  context.calls.length = 0;
+
+  context.emit('light', 255, 100);
+  assert.equal(context.calls.findLast(([name]) => name === 'value')[2], 1);
+});
+
+// --- On/off contacts --------------------------------------------------------
+// A button, pad, switch or logo reports its two edges and nothing in between:
+// one 1 when it goes down, one 0 when it comes up. Nothing on this path may
+// wait for a reading to be repeated, because it never will be.
+
+test('a press and its release each land once', () => {
   const context = setup();
   context.emit('btna', 0, 0);
   context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
   context.calls.length = 0;
 
-  context.emit('btna', 1, 100); // pressed
-  context.emit('btna', 0, 200); // contact flickers open for one tick
-  context.emit('btna', 1, 300); // still pressed
-  context.emit('btna', 1, 400);
-
-  assert.deepEqual(
-    context.calls.filter(([name, port]) => name === 'value' && port === 'speed.hold'),
-    [
-      ['value', 'speed.hold', 1],
-      ['value', 'speed.hold', 1],
-      ['value', 'speed.hold', 1],
-      ['value', 'speed.hold', 1],
-    ],
-  );
-});
-
-test('a dropped tick cannot re-fire a trigger wired to the same contact', () => {
-  const context = setup();
-  context.emit('btna', 0, 0);
-  context.engine.addConnection('btna', { node: 'flap', port: 'trigger' });
-
-  context.emit('btna', 1, 100); // one real press
-  context.emit('btna', 0, 200); // flicker
-  context.emit('btna', 1, 300);
-  context.emit('btna', 0, 400); // real release
-  context.emit('btna', 0, 500);
-
-  assert.equal(
-    context.calls.filter(([name, port]) => name === 'fire' && port === 'flap.trigger').length,
-    1,
-  );
-});
-
-test('a real release lands on the tick that confirms it', () => {
-  const context = setup();
-  context.emit('btna', 0, 0);
-  context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
-  context.emit('btna', 1, 100);
-  context.calls.length = 0;
-
-  context.emit('btna', 0, 200); // could still be a flicker — keep holding
-  context.emit('btna', 0, 300); // said twice, so it is a release
+  context.emit('btna', 1, 100); // down
+  context.emit('btna', 0, 200); // up, and this is the only 0 there will be
 
   assert.deepEqual(
     context.calls.filter(([name, port]) => name === 'value' && port === 'speed.hold'),
@@ -548,23 +622,39 @@ test('a real release lands on the tick that confirms it', () => {
   );
 });
 
-test('a tap seen on only one tick still registers', () => {
+test('a trigger fires on every press, not just the first', () => {
   const context = setup();
   context.emit('btna', 0, 0);
-  context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
-  context.calls.length = 0;
+  context.engine.addConnection('btna', { node: 'flap', port: 'trigger' });
 
-  context.emit('btna', 1, 100); // the whole tap, as far as the poll saw it
+  context.emit('btna', 1, 100);
   context.emit('btna', 0, 200);
-  context.emit('btna', 0, 300);
+  context.emit('btna', 1, 1000); // far enough apart to clear any cooldown
+  context.emit('btna', 0, 1100);
+  context.emit('btna', 1, 2000);
 
-  assert.deepEqual(
-    context.calls.filter(([name, port]) => name === 'value' && port === 'speed.hold'),
-    [['value', 'speed.hold', 1], ['value', 'speed.hold', 1], ['value', 'speed.hold', 0]],
+  assert.equal(
+    context.calls.filter(([name, port]) => name === 'fire' && port === 'flap.trigger').length,
+    3,
   );
 });
 
-test('two controls on one contact agree about a dropped tick', () => {
+test('holding a contact down does not re-fire its trigger', () => {
+  const context = setup();
+  context.emit('btna', 0, 0);
+  context.engine.addConnection('btna', { node: 'flap', port: 'trigger' });
+
+  context.emit('btna', 1, 100); // one press, held for a while
+  context.emit('btna', 1, 1000); // a redundant edge, should it ever arrive
+  context.emit('btna', 0, 2000);
+
+  assert.equal(
+    context.calls.filter(([name, port]) => name === 'fire' && port === 'flap.trigger').length,
+    1,
+  );
+});
+
+test('two controls on one contact both let go together', () => {
   const context = setup();
   context.emit('btna', 0, 0);
   context.engine.addConnection('btna', { node: 'speed', port: 'hold' }, 'hold');
@@ -572,15 +662,14 @@ test('two controls on one contact agree about a dropped tick', () => {
   context.emit('btna', 1, 100);
   context.calls.length = 0;
 
-  context.emit('btna', 0, 200); // flicker
-  context.emit('btna', 1, 300);
+  context.emit('btna', 0, 200);
 
-  const held = context.calls.filter(([name]) => name === 'value');
-  assert.ok(held.length > 0);
-  assert.ok(held.every(([, , value]) => value === 1));
+  const released = context.calls.filter(([name]) => name === 'value');
+  assert.equal(released.length, 2);
+  assert.ok(released.every(([, , value]) => value === 0));
 });
 
-test('a gesture is not held back waiting for a second tick', () => {
+test('a gesture fires on the single 1 it sends', () => {
   const context = setup();
   context.emit('shake', 1, 0);
   context.engine.addConnection('shake', { node: 'flap', port: 'trigger' });
@@ -604,4 +693,132 @@ test('a reading is passed through unfiltered', () => {
     context.calls.filter(([name, port]) => name === 'value' && port === 'speed.level'),
     [['value', 'speed.level', 1], ['value', 'speed.level', 0]],
   );
+});
+
+// --- Bearings ---------------------------------------------------------------
+// A heading is a circle, and every other numeric transform in the runtime
+// measures along a line. These pin down the difference.
+
+test('a bearing offers only the two jacks a direction can answer', () => {
+  const context = setup();
+  context.emit('heading', 90);
+
+  // No level: mapping a circle onto a control would need a seam for it to jump
+  // across. No above/below: a direction has no high end and no low end.
+  assert.equal(context.engine.addConnection('heading', { node: 'speed', port: 'level' }), null);
+  assert.deepEqual(context.engine.listConnections(), []);
+  assert.equal(context.signalStore.get('heading').kind, 'bearing');
+
+  // The two it does offer both take, and land on the right transforms.
+  const held = context.engine.addConnection('heading', { node: 'speed', port: 'hold' });
+  const fired = context.engine.addConnection('heading', { node: 'flap', port: 'trigger' });
+  assert.equal(held.transform.type, 'facing');
+  assert.equal(fired.transform.type, 'faces');
+});
+
+test('facing north is measured the short way round, not from zero', () => {
+  const context = setup();
+  context.emit('heading', 180);
+  context.engine.addConnection('heading', { node: 'speed', port: 'hold' });
+  context.calls.length = 0;
+
+  // 350° is ten degrees shy of north. Read as a plain number it is nowhere near
+  // the value 0, which is exactly the mistake a linear transform would make.
+  context.emit('heading', 350);
+  assert.deepEqual(context.calls.filter(([, port]) => port === 'speed.hold').at(-1),
+    ['value', 'speed.hold', 1]);
+
+  context.emit('heading', 10);
+  assert.deepEqual(context.calls.filter(([, port]) => port === 'speed.hold').at(-1),
+    ['value', 'speed.hold', 1]);
+});
+
+test('spinning past the seam does not fire a trigger', () => {
+  const context = setup();
+  context.emit('heading', 180);
+  const [wire] = [context.engine.addConnection('heading', { node: 'restart', port: 'trigger' })];
+  context.engine.updateConnection(wire.id, { transform: { bearing: 180 } });
+  context.calls.length = 0;
+
+  // A sweep right through 0°/360°, nowhere near south. A threshold watching for
+  // a crossing would fire on the wrap; a bearing has nothing to cross.
+  for (const degrees of [300, 350, 359, 0, 1, 10, 60]) context.emit('heading', degrees);
+
+  assert.deepEqual(context.calls.filter(([name]) => name === 'fire'), []);
+});
+
+test('a facing trigger fires on arrival and not again while it is held there', () => {
+  const context = setup();
+  context.emit('heading', 180);
+  context.engine.addConnection('heading', { node: 'restart', port: 'trigger' });
+  context.calls.length = 0;
+
+  context.emit('heading', 5);   // arrives at north
+  context.emit('heading', 0);   // still north
+  context.emit('heading', 10);  // still north
+  assert.deepEqual(context.calls.filter(([name]) => name === 'fire'), [['fire', 'restart.trigger']]);
+
+  context.emit('heading', 180); // turned properly away
+  context.emit('heading', 0);   // and back again
+  assert.equal(context.calls.filter(([name]) => name === 'fire').length, 2);
+});
+
+test('resting on the edge of a sector does not chatter the hold', () => {
+  const context = setup();
+  context.emit('heading', 0);
+  context.engine.addConnection('heading', { node: 'speed', port: 'hold' });
+  context.emit('heading', 0); // pointing north, so the hold is on
+  context.calls.length = 0;
+
+  // Between the enter band and the exit band: whatever it was, it stays. This is
+  // an object sitting on a sector boundary, which is where chatter would come
+  // from without the two bands.
+  for (const degrees of [45, 40, 50, 45]) context.emit('heading', degrees);
+
+  const held = context.calls.filter(([, port]) => port === 'speed.hold').map(([, , value]) => value);
+  assert.deepEqual([...new Set(held)], [1], 'the hold let go inside its own dead band');
+
+  // Properly away, though, and it does let go.
+  context.emit('heading', 90);
+  assert.deepEqual(context.calls.filter(([, port]) => port === 'speed.hold').at(-1),
+    ['value', 'speed.hold', 0]);
+});
+
+test('a saved bearing survives a reload and refuses a direction it does not offer', () => {
+  const storage = memoryStorage();
+  const context = setup(storage);
+  context.emit('heading', 0);
+  const wire = context.engine.addConnection('heading', { node: 'speed', port: 'hold' });
+  context.engine.updateConnection(wire.id, { transform: { bearing: 270 } });
+
+  const reloaded = setup(storage);
+  assert.deepEqual(reloaded.engine.listConnections().map((c) => c.transform),
+    [{ type: 'facing', bearing: 270 }]);
+
+  // 45° is not one of the four, so the wire is dropped rather than snapped to
+  // the nearest — the same as any other unreadable setting.
+  //
+  // Both halves are written the same way on purpose. This assertion used to run
+  // against a key and a payload shape the loader never reads, so the wire was
+  // "refused" only because storage was empty — the positive control below is
+  // what stops that being true again without anybody noticing.
+  const saved = (bearing) => {
+    const store = memoryStorage();
+    store.setItem(key('wiring', 'v3'), JSON.stringify({
+      version: 3,
+      games: {
+        test: [{
+          id: 'x',
+          source: 'heading',
+          sourceKind: 'bearing',
+          target: { node: 'speed', port: 'hold' },
+          transform: { type: 'facing', bearing },
+        }],
+      },
+    }));
+    return setup(store).engine.listConnections();
+  };
+
+  assert.equal(saved(270).length, 1, 'a direction it does offer is read back');
+  assert.deepEqual(saved(45), [], 'and one it does not is dropped');
 });

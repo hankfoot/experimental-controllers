@@ -50,6 +50,7 @@ export class BaseGame {
   end() {
     if (this.state.phase !== 'playing') return;
     this.state.phase = 'over';
+    this.overSince = this.clock();
     this.notify();
   }
 
@@ -64,9 +65,31 @@ export class BaseGame {
     this.notify();
   }
 
+  /**
+   * How long the game-over card refuses to be dismissed.
+   *
+   * The same input that crashed you is very often still held, or being mashed,
+   * on the frame you crash — so without this the card appears and is gone
+   * again inside a frame or two and the round restarts with nobody having read
+   * the score. Short enough not to feel like a lock-out, long enough to see.
+   */
+  static OVER_LOCK_MS = 900;
+
+  /** Overridable so a test can drive the lock-out without waiting on a clock. */
+  clock() {
+    return typeof performance === 'undefined' ? Date.now() : performance.now();
+  }
+
+  /** Whether the game-over card is still insisting on being looked at. */
+  settling() {
+    return this.state.phase === 'over'
+      && this.clock() - (this.overSince ?? -Infinity) < BaseGame.OVER_LOCK_MS;
+  }
+
   // Most games advance from `ready` and retry from `over` on the same input, so
   // the flow reads as one button. Returns true when the round is now running.
   engage() {
+    if (this.settling()) return false;
     if (this.state.phase === 'over') this.reset();
     if (this.state.phase === 'ready') this.start();
     return this.state.phase === 'playing';

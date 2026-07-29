@@ -21,25 +21,43 @@
         <span class="mark" aria-hidden="true">
           <svg viewBox="-3 -3 46 46"><circle cx="20" cy="7" r="7.5" fill="#2f6bff"/><circle cx="33" cy="20" r="7.5" fill="#e5484d"/><circle cx="20" cy="33" r="7.5" fill="#f4b400"/><circle cx="7" cy="20" r="7.5" fill="#34b24a"/></svg>
         </span>
-        Experimental Game Controllers
+        Game Controller Workshop
       </a>
 
       <nav class="menu" role="tablist" aria-label="Sections">
         <button class="tab" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
         <button class="tab" role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="false" tabindex="-1">Setup</button>
         <button class="tab" role="tab" id="tab-sensing" aria-controls="panel-sensing" aria-selected="false" tabindex="-1">Sensing</button>
-        <button class="tab" role="tab" id="tab-config" aria-controls="panel-config" aria-selected="false" tabindex="-1">Config</button>
-        <button class="tab" role="tab" id="tab-customize" aria-controls="panel-customize" aria-selected="false" tabindex="-1">Customize</button>
+        <button class="tab" role="tab" id="tab-controls" aria-controls="panel-controls" aria-selected="false" tabindex="-1">Controls</button>
+        <button class="tab" role="tab" id="tab-design" aria-controls="panel-design" aria-selected="false" tabindex="-1">Design</button>
         <button class="tab" role="tab" id="tab-game" aria-controls="panel-game" aria-selected="false" tabindex="-1">Game</button>
       </nav>
 
       <div class="topbar-right">
+        <!-- Saving and sharing a look. Up here rather than as a step on the Design
+             screen because it is not a step: it is something you do at any point,
+             about everything you have made, and it was the one card down there
+             that had nothing to do with designing anything. -->
+        <span class="theme-note theme-io-note" id="theme-io-note" role="status"></span>
+        <button class="btn btn-soft theme-io" id="theme-export"
+                title="Save everything you have made to a file">Save</button>
+        <!-- A label rather than a button, because the file input has to live
+             inside something clickable. The word is the whole label — an
+             arrow said neither which direction it went nor what it acted on. -->
+        <label class="btn btn-soft theme-io" id="theme-import"
+               title="Open a saved file">Load
+          <input type="file" accept="application/json,.json" class="visually-hidden-file"
+                 id="theme-import-file" />
+        </label>
         <!-- Always visible, always opens the per-channel live-input popover. The label
              carries the connection state: "Not Connected" until a board pairs, then that
-             board's name (e.g. "BBC micro:bit [gapeg]"). Connect sits beside it and drops
-             out once paired; Disconnect lives inside the popover. The dot pulses while
-             data flows but renders no channel data, so many simultaneous streams can't
-             make it glitch. -->
+             board's name (e.g. "BBC micro:bit [gapeg]"). The dot blinks on each reading
+             that arrives but renders no channel data, so many simultaneous streams can't
+             make it glitch; `data-state` colours it, including the two unhappy ones —
+             `stale` for a board that has gone quiet and `lost` for one that is gone.
+             Connect and Disconnect swap places, and both live out here: unplugging is
+             something you do when something has gone wrong, which is the worst moment to
+             hide it two clicks deep. -->
         <button class="signal" id="signal-toggle" aria-controls="viz-pop" aria-expanded="false"
                 title="Live input" data-state="disconnected" data-active="false">
           <span class="sig-dot" aria-hidden="true"></span>
@@ -47,6 +65,7 @@
         </button>
 
         <button id="connect-btn" class="btn">Connect</button>
+        <button id="disconnect-btn" class="btn btn-soft" hidden>Disconnect</button>
       </div>
     </div>
   </header>
@@ -55,7 +74,6 @@
   <div class="viz-pop" id="viz-pop" role="dialog" aria-label="Live input" aria-modal="false" hidden>
     <div class="viz-pop-head">
       <strong>Live input</strong>
-      <button id="disconnect-btn" class="btn btn-soft" hidden>Disconnect</button>
       <button id="viz-close" class="icon-btn" aria-label="Close">✕</button>
     </div>
 
@@ -65,7 +83,8 @@
   </div>
 
   <div id="unsupported-banner" class="note wrap" hidden>
-    This project requires <strong>Chrome</strong> or <strong>Edge</strong> (desktop or Android) to support Web Bluetooth.
+    This project requires <strong>Chrome</strong> or <strong>Edge</strong>. Connecting over Bluetooth
+    works on desktop and Android; connecting over the USB cable is desktop only.
   </div>
 
   <main class="wrap">
@@ -77,7 +96,9 @@
         <p class="eyebrow">Fidget Camp 2026 · Workshop</p>
         <h1>Turn Anything into a Game Controller</h1>
         <p class="byline">
-          with Avi Romanoff &amp; Hank Duhaime
+          with Avi Romanoff
+          (<a href="https://www.instagram.com/aviromanoff/" target="_blank" rel="noopener">@aviromanoff</a>)
+          &amp; Hank Duhaime
           (<a href="https://www.instagram.com/schmardware/" target="_blank" rel="noopener">@schmardware</a>)
         </p>
         <p class="home-lede">
@@ -90,33 +111,6 @@
           <a class="btn btn-soft btn-lg" id="slides-link" href="https://docs.google.com/presentation/d/1aG_TYwTnf5ykXEjPiB-F1syKZAWkMWPhGqWRq1tN1R0/edit" target="_blank" rel="noopener">Workshop slides &#8599;</a>
         </div>
       </section>
-
-      <div class="home-cards">
-        <button class="home-card home-card--red" data-tab-target="setup">
-          <span class="home-card-num">1</span>
-          <h3>Setup</h3>
-          <p>Get your micro:bit talking to the browser over Bluetooth.</p>
-          <span class="home-card-go">Open &rarr;</span>
-        </button>
-        <button class="home-card home-card--yellow" data-tab-target="sensing">
-          <span class="home-card-num">2</span>
-          <h3>Sensing</h3>
-          <p>Design your controller and generate its code.</p>
-          <span class="home-card-go">Open &rarr;</span>
-        </button>
-        <button class="home-card home-card--green" data-tab-target="config">
-          <span class="home-card-num">3</span>
-          <h3>Config</h3>
-          <p>Pick a control scheme and wire your inputs to it.</p>
-          <span class="home-card-go">Open &rarr;</span>
-        </button>
-        <button class="home-card home-card--gray" data-tab-target="game">
-          <span class="home-card-num">4</span>
-          <h3>Game</h3>
-          <p>Play the sidescroller with the controller you built.</p>
-          <span class="home-card-go">Open &rarr;</span>
-        </button>
-      </div>
     </div>
 
     <!-- SCREEN: Set up -->
@@ -124,8 +118,8 @@
       <section class="block" id="setup-guide">
         <div class="block-head"><h2>Set up your micro:bit</h2></div>
         <p class="lead">
-          A one-time setup: open the ready-made project, paste in the starter code, flash it, find your
-          board's Bluetooth name, and connect. Takes a couple of minutes.
+          A one-time setup: open the ready-made project, paste in the starter code, flash it, and
+          note the name your board scrolls. Takes a couple of minutes.
         </p>
 
         <ol class="steps">
@@ -233,25 +227,6 @@ basic.forever(function () {
             </div>
           </li>
 
-          <li class="step">
-            <span class="step-num">6</span>
-            <div class="step-body">
-              <h3>Pair your micro:bit via Bluetooth</h3>
-              <p>
-                Click <strong>Connect</strong> in the top bar of this page. In the browser's Bluetooth list, pick the
-                <code>BBC micro:bit [·····]</code> that matches your five letters. The board will display a
-                checkmark, and the top bar will swap the Connect button for your board's name — click that
-                name anytime to watch every input you've configured come in live.
-              </p>
-              <br/>
-              <p>
-                <strong>FYI - if you refresh this page, you'll need to re-pair.</strong>
-              </p>
-              <figure class="shot">
-                <img src="assets/setup-chooser.png" alt="The browser's Bluetooth chooser listing BBC micro:bit devices" />
-              </figure>
-            </div>
-          </li>
         </ol>
       </section>
 
@@ -274,7 +249,10 @@ basic.forever(function () {
           <li class="step">
             <span class="step-num">1</span>
             <div class="step-body">
-              <h3>Enable inputs</h3>
+              <div class="step-head">
+                <h3>Enable inputs</h3>
+                <button class="btn btn-soft builder-clear" id="builder-clear" type="button">Reset connections</button>
+              </div>
               <p>
                 Check every input your controller will use — pins also pick <em>how</em> they're
                 wired. The code and build tips below update as you go.
@@ -305,11 +283,79 @@ basic.forever(function () {
             <div class="step-body">
               <h3>Build your controller</h3>
               <p>
-                Wire up each input and turn your object into a controller. Then hit
-                <strong>Connect</strong> in the top bar and click your board's name to check
-                every input responds.
+                Wire up each input and turn your object into a controller.
               </p>
               <div id="builder-steps"><!-- populated by js/builder.js --></div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <h3>Connect your board</h3>
+              <p>
+                Hit <strong>Connect</strong> in the top bar and pick how you want to connect. Then
+                click your board's name up there to watch every input come in live.
+              </p>
+              <!-- Written by js/builder.js when the picked inputs are ones the
+                   radio struggles with. -->
+              <p class="builder-warn" id="wired-advice" role="status" hidden></p>
+
+              <details class="how">
+                <summary>Connecting over Bluetooth</summary>
+                <div class="how-body">
+                  <p>
+                    Pick <strong>Wireless</strong>. In the browser's Bluetooth list, choose the
+                    <code>BBC micro:bit [·····]</code> that matches the five letters your board
+                    scrolled. It will show a checkmark, and the top bar will swap Connect for your
+                    board's name.
+                  </p>
+                  <p>
+                    Your board needs its own power for this — a battery pack, or the USB cable just
+                    for the electricity. <strong>Refreshing this page means pairing again.</strong>
+                  </p>
+                  <figure class="shot">
+                    <img src="assets/setup-chooser.png" alt="The browser's Bluetooth chooser listing BBC micro:bit devices" />
+                  </figure>
+                </div>
+              </details>
+
+              <details class="how">
+                <summary>Connecting over the USB cable</summary>
+                <div class="how-body">
+                  <p>
+                    Pick <strong>Wired</strong>, then choose your micro:bit from the list of ports.
+                    It is usually the only one, and it stays connected until you unplug it.
+                  </p>
+                  <p>
+                    The cable carries far more readings a second than Bluetooth can, so this is the
+                    one to use if you have picked several live sensors. It also needs no battery.
+                    The trade is that you are attached to the computer.
+                  </p>
+                  <p class="how-warn">
+                    <strong>Only one program can hold the cable at a time.</strong> If MakeCode is
+                    still open in another tab, close that tab — or at least close its serial
+                    readout — before connecting here. A board that is already being read somewhere
+                    else will either not appear in the list or will connect and then send nothing.
+                  </p>
+                  <p>
+                    If it still refuses after that, the board needs a moment to let go: press the
+                    <strong>reset button</strong> on the back, or unplug the cable and plug it in
+                    again, then pick <strong>Wired</strong> once more.
+                  </p>
+                  <!-- PLACEHOLDER: swap these for real screenshots.
+                       1. MakeCode's serial readout open in another tab — the thing to close.
+                       2. The browser's serial port chooser with a micro:bit in it.
+                       3. The reset button on the back of the board.
+                       Drop the files into assets/ and update the src + alt below. -->
+                  <figure class="shot shot-placeholder">
+                    <div class="shot-slot">Screenshot: MakeCode's serial readout, which has to be closed first</div>
+                    <div class="shot-slot">Screenshot: the browser's port chooser</div>
+                    <div class="shot-slot">Screenshot: the reset button on the back of the board</div>
+                    <figcaption>Images to come.</figcaption>
+                  </figure>
+                </div>
+              </details>
             </div>
           </li>
         </ol>
@@ -317,17 +363,17 @@ basic.forever(function () {
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="setup"><span aria-hidden="true">&larr;</span> Setup</button>
-        <button class="pager-btn pager-next" data-tab-target="config">Config <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="controls">Controls <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
-    <!-- SCREEN: Config -->
-    <div class="panel screen" role="tabpanel" id="panel-config" aria-labelledby="tab-config" hidden>
-      <section class="block" id="game-config">
-        <div class="block-head"><h2>Configure your controls</h2></div>
+    <!-- SCREEN: Controls -->
+    <div class="panel screen" role="tabpanel" id="panel-controls" aria-labelledby="tab-controls" hidden>
+      <section class="block" id="controls-board">
+        <div class="block-head"><h2>Wire up your controls</h2></div>
         <p class="lead">
-          One sidescroller, three ways to fly it — a single trigger, one or two held inputs,
-          or one analog dial. Pick a scheme, and its controls are what your inputs get wired to.
+          One sidescroller, four ways to fly it — tap to rise, hold to rise, hold to slide,
+          or steer directly. Pick a scheme, and its controls are what your inputs get wired to.
           Each scheme keeps its own wiring, and the keys and on-screen buttons always remain available.
         </p>
 
@@ -344,6 +390,10 @@ basic.forever(function () {
             </div>
             <button class="btn btn-soft wiring-clear" id="wiring-clear" type="button">Clear wiring</button>
           </div>
+
+          <!-- Shown in place of the whole board when nothing has been picked to
+               wire. Written by js/wiring-ui.js. -->
+          <div class="wiring-nothing" id="wiring-nothing" hidden></div>
 
           <div class="wiring-board" id="wiring-board">
             <div class="wiring-column wiring-column-sources">
@@ -364,38 +414,86 @@ basic.forever(function () {
               <div class="wiring-targets" id="wiring-targets"></div>
             </div>
           </div>
-
-          <!-- Only speaks up when a calibration has something to report; the
-               wiring itself is explained by the board rather than by a caption. -->
-          <p class="wiring-status" id="wiring-status" role="status" aria-live="polite"></p>
         </section>
       </section>
 
       <nav class="pager">
         <button class="pager-btn" data-tab-target="sensing"><span aria-hidden="true">&larr;</span> Sensing</button>
-        <button class="pager-btn pager-next" data-tab-target="customize">Customize <span aria-hidden="true">&rarr;</span></button>
+        <button class="pager-btn pager-next" data-tab-target="design">Design <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
 
-    <!-- SCREEN: Customize -->
-    <div class="panel screen" role="tabpanel" id="panel-customize" aria-labelledby="tab-customize" hidden>
-      <section class="block" id="game-customize">
-        <div class="block-head"><h2>Customize your game</h2></div>
+    <!-- SCREEN: Design -->
+    <div class="panel screen" role="tabpanel" id="panel-design" aria-labelledby="tab-design" hidden>
+      <section class="block" id="game-design">
+        <div class="block-head"><h2>Design your game</h2></div>
         <p class="lead">
-          Config decides <em>how</em> you fly. This is where you'll decide what the flying looks
-          like — the craft, the world it scrolls through, and how hard it pushes back.
+          Controls is where you decide <em>how</em> you fly, using the controller you built.
+          This is where you decide what you are flying through, what it sounds like, and what it
+          says. Nothing here is wired to anything, and none of it changes how the game plays.
         </p>
 
-        <div class="placeholder">
-          <p class="placeholder-title">Nothing to customize yet</p>
-          <p>
-            Coming soon. Until then, head to the game and play with the scheme you wired up.
-          </p>
-        </div>
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <h3>Set the course</h3>
+              <p>
+                The obstacles you fly past and how quickly they arrive. The only part of this
+                screen the game itself reads.
+              </p>
+              <div id="design-settings" class="settings-grid"></div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body">
+              <h3>Design sprites</h3>
+              <p>
+                Every one of these already has a picture. Open it and draw over it, or bring in a
+                photo and draw on that. The preview above shows the game as you go.
+              </p>
+              <div class="theme-preview" id="design-preview" aria-label="Game preview"></div>
+              <div id="design-sprites" class="sprite-grid"></div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Record sounds</h3>
+              <p>
+                Every one of these already makes a noise. Record over it into the microphone, or
+                bring in a file you already have.
+              </p>
+              <div id="design-sound" class="settings-grid"></div>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <h3>Customize UI</h3>
+              <p>
+                What the card in the middle of the canvas says, before a round and after a crash.
+                Click any line on it to rewrite that line.
+              </p>
+              <div id="design-text"></div>
+            </div>
+          </li>
+
+        </ol>
+
+        <!-- The one destructive control, at the bottom of the screen it undoes.
+             Saving and opening a look are icons in the top bar; this is not,
+             because a one-click discard beside the tab bar is a mistake waiting
+             to happen. -->
+        <div id="design-share" class="design-reset"></div>
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="config"><span aria-hidden="true">&larr;</span> Config</button>
+        <button class="pager-btn" data-tab-target="controls"><span aria-hidden="true">&larr;</span> Controls</button>
         <button class="pager-btn pager-next" data-tab-target="game">Game <span aria-hidden="true">&rarr;</span></button>
       </nav>
     </div>
@@ -406,9 +504,15 @@ basic.forever(function () {
         <div class="block-head"><h2>Play</h2></div>
         <p class="lead">
           Fly the craft through the gaps. It answers to whatever you wired up in
-          <button class="link-btn" type="button" data-tab-target="config">Config</button>,
+          <button class="link-btn" type="button" data-tab-target="controls">Controls</button>,
           and to the keys and buttons below either way.
         </p>
+
+        <!-- Says what is missing between the controller you built and the game:
+             no inputs picked, nothing wired to what steers, only half of a
+             two-input scheme wired, or a wire whose board has never spoken.
+             Written by js/main.js; hidden entirely once the game is playable. -->
+        <p class="game-warn" id="game-warning" role="status" hidden></p>
 
         <div class="game-shell">
           <div class="game-bar" aria-label="Game score">
@@ -417,17 +521,17 @@ basic.forever(function () {
             <div class="game-stat"><span>Best</span><strong id="game-best">0</strong></div>
             <button class="btn btn-soft game-reset" id="game-reset" type="button">Reset</button>
           </div>
-          <canvas id="game-canvas" width="480" height="600" tabindex="0"
+          <canvas id="game-canvas" width="960" height="600" tabindex="0"
                   aria-label="Game canvas"></canvas>
           <div class="game-controls">
-            <div class="game-buttons" id="game-buttons"></div>
+            <p class="game-keys" id="game-buttons"></p>
             <p id="game-status" role="status" aria-live="polite">Loading game…</p>
           </div>
         </div>
       </section>
 
       <nav class="pager">
-        <button class="pager-btn" data-tab-target="customize"><span aria-hidden="true">&larr;</span> Customize</button>
+        <button class="pager-btn" data-tab-target="design"><span aria-hidden="true">&larr;</span> Design</button>
         <button class="pager-btn pager-next" data-tab-target="home">Back to start <span aria-hidden="true">&#8635;</span></button>
       </nav>
     </div>
@@ -436,8 +540,8 @@ basic.forever(function () {
 
   <footer class="foot">
     <div class="wrap foot-inner">
-      <span>Fidget Camp 2026 · Experimental Game Controllers</span>
-      <a href="https://github.com/hankfoot/experimental-game-controllers">GitHub</a>
+      <span>Fidget Camp 2026 · Turn anything into a game controller</span>
+      <a href="https://github.com/hankfoot/game-controller-workshop">GitHub</a>
     </div>
   </footer>
 

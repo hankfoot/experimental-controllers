@@ -6,6 +6,7 @@
 // screens without the diagram.
 
 import {
+  BEARINGS,
   findOutput,
   isValuePort,
   outputIdOf,
@@ -16,23 +17,86 @@ import {
 import { createDefaultTransform } from './wiring-runtime.js';
 import {
   browserStorage,
+  isPortSetting,
   loadDrafts,
-  loadPortPaces,
+  loadPortDefaults,
   normalizeTransform,
   saveDrafts,
-  savePortPaces,
+  savePortDefaults,
 } from './wiring-storage.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// What a group of jacks is called, which is the connector type itself — the same
+// word the matching port says on the other side of the board. A setting is the
+// one entry that names no connector, because it has none: what the group holds
+// is choices about the control, so that is what it says.
+const TYPE_LABELS = Object.freeze({
+  trigger: 'Trigger',
+  hold: 'Hold',
+  level: 'Level',
+  setting: 'Settings',
+});
+
+// How often a trigger will let itself fire. The runtime counts in milliseconds,
+// so that is what gets stored — but a millisecond is a unit you have to already
+// know, and the choice being made is only ever between three speeds. Nobody
+// building a controller out of foil needs the difference between 160 ms and
+// 200 ms; they need to know whether a shake fires once or twenty times.
+//
+// Read as a ceiling — "Limit trigger to a few times a second" — because that is
+// what it is. A rate stated flat sounds like a promise the wire will fire that
+// often, when all it does is refuse to fire faster.
+//
+// Each choice carries its own "to", so the one that sets no ceiling at all can
+// say so plainly instead of being bent into a rate it isn't. "No limit" is a
+// different shape of answer from "a few times a second", and the sentence is
+// only right if the choices are allowed to be different shapes.
+const PACES = Object.freeze([
+  [0, 'not at all'],
+  [160, 'to a few times a second'],
+  [1000, 'to about once a second'],
+]);
+
+// How closely a level follows the reading driving it — the level's answer to
+// the same question a trigger's pace answers, which is why it sits on the same
+// end of the wire. Stored as the fraction of the old value each tick keeps, and
+// said as what the control visibly does with it: a mic reading twitches, and the
+// choice is whether the craft twitches with it.
+//
+// Each reads as the tail of its port's own sentence, so they are participles
+// rather than adverbs: "Set the vertical position while smoothing out the
+// jitter."
+const SMOOTHINGS = Object.freeze([
+  [0, 'following every wobble'],
+  [0.6, 'smoothing out the jitter'],
+  [0.9, 'ignoring all but the big moves'],
+]);
+
+// Saved wiring can carry any number — pace used to be typed into a box, and
+// smoothing into a percent one — so a stored value lands on whichever choice it
+// sits closest to. Showing the nearest is honest about what the wire does;
+// showing nothing selected would not be.
+function nearestChoice(choices, value, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return choices.reduce(
+    (best, [option]) => (Math.abs(option - number) < Math.abs(best - number) ? option : best),
+    choices[0][0],
+  );
+}
+
+const nearestPace = (ms) => nearestChoice(PACES, ms, PACES[1][0]);
+const nearestSmoothing = (fraction) => nearestChoice(SMOOTHINGS, fraction, SMOOTHINGS[0][0]);
 
 export function initWiringUI({ signalStore, engine }) {
   const byId = (id) => document.getElementById(id);
   const ui = {
     board: byId('wiring-board'),
+    nothing: byId('wiring-nothing'),
     sources: byId('wiring-sources'),
     targets: byId('wiring-targets'),
     cables: byId('wiring-cables'),
-    status: byId('wiring-status'),
     clear: byId('wiring-clear'),
     // Owned by the game module — the board only ever re-homes it, never builds
     // or clears it, so switching schemes can't tear out the control that
@@ -49,21 +113,28 @@ export function initWiringUI({ signalStore, engine }) {
   // unwiring hands the settings back, so nothing you typed is thrown away.
   const draftStorage = browserStorage();
   const drafts = loadDrafts(draftStorage);
-  // The same idea from the control's end: how fast it will let itself be driven,
-  // readable and settable whether or not anything is wired into it yet.
-  const paces = loadPortPaces(draftStorage);
+  // The same idea from the control's end: how it will let itself be driven —
+  // pacing for a trigger, smoothing for a level — readable and settable whether
+  // or not anything is wired into it yet.
+  const portDefaults = loadPortDefaults(draftStorage);
 
   function rememberDraft(key, kind, transform) {
     drafts.set(key, { kind, transform });
     saveDrafts(draftStorage, drafts);
   }
 
-  const paceKey = (node, port) => `${node}:${port}`;
-  const paceOf = (node, port) => paces.get(paceKey(node, port)) ?? 160;
+  const portKey = (node, port) => `${node}:${port}`;
+  const portSettings = (node, port) => portDefaults.get(portKey(node, port)) ?? {};
+  const paceOf = (node, port) => portSettings(node, port).cooldownMs ?? 160;
+  const smoothingOf = (node, port) => portSettings(node, port).smoothing ?? SMOOTHINGS[0][0];
 
-  function rememberPace(node, port, cooldownMs) {
-    paces.set(paceKey(node, port), cooldownMs);
-    savePortPaces(draftStorage, paces);
+  function rememberPortSetting(node, port, patch) {
+    setPortSetting(portKey(node, port), patch);
+  }
+
+  function setPortSetting(key, patch) {
+    portDefaults.set(key, { ...(portDefaults.get(key) ?? {}), ...patch });
+    savePortDefaults(draftStorage, portDefaults);
   }
 
   const targetOf = (nodeId) => engine.targets.find(({ id }) => id === nodeId);
@@ -76,14 +147,10 @@ export function initWiringUI({ signalStore, engine }) {
     return signal.unit ? `${number}${signal.unit}` : number;
   };
 
-  // The same unit after any number you set, as its own word in the sentence —
-  // the way "ms" already follows a pace. Nothing to add when the reading is a
-  // bare count; those channels say their scale in the block's description.
+  // The sensor's own unit after any number you set, as its own word in the
+  // sentence. Nothing to add when the reading is a bare count; those channels
+  // say their scale in the block's description.
   const unitWords = (signal) => (signal?.unit ? [signal.unit] : []);
-
-  function setStatus(message) {
-    ui.status.textContent = message;
-  }
 
   function outputJack(channel, outputId) {
     return ui.sources.querySelector(
@@ -111,20 +178,55 @@ export function initWiringUI({ signalStore, engine }) {
     return findOutput(signal, output) ?? { id: output, type: 'trigger', label: output };
   }
 
+  /** What the Controls screen says when there is nothing yet to control with. */
+  function emptyBoard() {
+    const title = document.createElement('p');
+    title.className = 'placeholder-title';
+    title.textContent = 'Nothing to wire up yet';
+
+    const body = document.createElement('p');
+    body.append(
+      document.createTextNode('Pick the inputs your controller uses over on '),
+    );
+    const link = document.createElement('button');
+    link.type = 'button';
+    link.className = 'link-btn';
+    link.dataset.tabTarget = 'sensing';
+    link.textContent = 'Sensing';
+    body.append(link, document.createTextNode(
+      ', and they will appear here to wire to the game. Connecting a board that '
+      + 'is already sending will also fill this in.',
+    ));
+
+    return [title, body];
+  }
+
   function renderSources() {
     const signals = signalStore.all().sort((a, b) => {
       const aRank = a.planned ? 0 : a.wired ? 1 : 2;
       const bRank = b.planned ? 0 : b.wired ? 1 : 2;
-      return aRank - bRank || a.label.localeCompare(b.label);
+      if (aRank !== bRank) return aRank - bRank;
+      // The inputs you picked keep the order the Sensing page lists them in, so
+      // the two pages read as the same list rather than two shuffles of it.
+      // Anything else — a live channel nobody planned — has no such order to
+      // borrow and falls back to its name.
+      if (a.order != null && b.order != null) return a.order - b.order;
+      return a.label.localeCompare(b.label);
     });
     ui.sources.replaceChildren();
     ui.clear.disabled = engine.listConnections().length === 0;
 
-    if (!signals.length) {
-      const empty = document.createElement('p');
-      empty.className = 'wiring-source-empty';
-      empty.textContent = 'Choose inputs on the Sensing page, or connect a controller to discover them live.';
-      ui.sources.appendChild(empty);
+    // With nothing to wire *from*, the whole board goes away rather than just
+    // its left-hand column. It used to show a line of apology beside a full set
+    // of jacks, which invited people to drag between two things when only one
+    // of them existed — and left this screen claiming to offer something the
+    // Sensing screen had not yet made possible. The two pages agree now.
+    const bare = !signals.length;
+    ui.board.hidden = bare;
+    ui.nothing.hidden = !bare;
+    ui.clear.hidden = bare;
+    if (bare) {
+      ui.nothing.replaceChildren(...emptyBoard());
       return;
     }
 
@@ -160,15 +262,6 @@ export function initWiringUI({ signalStore, engine }) {
         lines.appendChild(mode);
       }
       lines.appendChild(channel);
-      // What the input actually reads, under its name — the same line the
-      // Sensing page introduced it with, so a block you wired days ago still
-      // says what its numbers mean without going back to look it up.
-      if (signal.desc) {
-        const desc = document.createElement('span');
-        desc.className = 'wiring-source-desc';
-        desc.textContent = signal.desc;
-        lines.appendChild(desc);
-      }
 
       const reading = document.createElement('span');
       reading.className = 'wiring-source-reading';
@@ -176,13 +269,43 @@ export function initWiringUI({ signalStore, engine }) {
       reading.textContent = formatValue(signal);
       identity.append(emoji, lines, reading);
 
+      // What the input actually reads, under its name — the same line the
+      // Sensing page introduced it with, so a block you wired days ago still
+      // says what its numbers mean without going back to look it up. A full
+      // card-width line rather than nested in the identity row, so it starts
+      // flush with the emoji instead of indented under the title.
+      let desc = null;
+      if (signal.desc) {
+        desc = document.createElement('p');
+        desc.className = 'wiring-source-desc';
+        desc.textContent = signal.desc;
+      }
+
       const outs = document.createElement('div');
       outs.className = 'wiring-outs';
+      // The headings name connector types, not jacks, so all the jacks of one
+      // type sit under one of them: an analog reading offers HOLD once, with
+      // its high end and its low end beneath. Which end each is belongs in the
+      // sentence, where "above" and "below" are already the words — repeating
+      // it as two headings made the type look like two different things.
+      let group = null;
+      let groupType = null;
       for (const output of sourceOutputs(signal)) {
+        if (output.type !== groupType) {
+          groupType = output.type;
+          group = document.createElement('div');
+          group.className = 'wiring-out-group';
+          const head = document.createElement('div');
+          head.className = 'wiring-out';
+          head.textContent = TYPE_LABELS[output.type] ?? output.label;
+          group.appendChild(head);
+          outs.appendChild(group);
+        }
+
         // A jack and whatever it currently drives travel together, so the
         // settings for a wire sit under the output that produced it rather
         // than in a separate list you have to match up by name. The row owns
-        // the identity; the name, the settings and the jack all read it.
+        // the identity; the settings and the jack both read it.
         const row = document.createElement('div');
         row.className = 'wiring-out-row';
         row.dataset.channel = signal.channel;
@@ -190,10 +313,6 @@ export function initWiringUI({ signalStore, engine }) {
         row.dataset.type = output.type;
         // Everything is reachable until a cable is actually in the air.
         row.dataset.compatible = 'true';
-
-        const head = document.createElement('div');
-        head.className = 'wiring-out';
-        head.textContent = output.label;
 
         // One wire per jack, so this is one box that changes appearance when
         // something is patched in — never a second box appearing beneath.
@@ -212,11 +331,13 @@ export function initWiringUI({ signalStore, engine }) {
         box.prepend(jack);
 
         maps.appendChild(box);
-        row.append(head, maps);
-        outs.appendChild(row);
+        row.appendChild(maps);
+        group.appendChild(row);
       }
 
-      card.append(identity, outs);
+      card.append(identity);
+      if (desc) card.appendChild(desc);
+      card.appendChild(outs);
       ui.sources.appendChild(card);
     }
   }
@@ -252,16 +373,33 @@ export function initWiringUI({ signalStore, engine }) {
       const ports = document.createElement('div');
       ports.className = 'wiring-ports';
 
+      // Grouped by connector type, exactly as an input's jacks are: the slide
+      // scheme accepts two holds, and heading each of them HOLD made the pair
+      // look like two different kinds of thing rather than the two ends of one
+      // control. Which of them you are looking at is the sentence in the box —
+      // one climbs, one drops — so the heading is free to name the type once.
+      //
+      // A setting has no connector, so it groups under SETTINGS instead — one
+      // heading over every choice this control offers, the way a type is one
+      // heading over every jack that carries it.
+      let group = null;
+      let groupType = null;
       for (const port of target.ports) {
         // One wire per port: a control is driven by one thing, so this is one
         // box that restyles when something lands on it.
         const wire = connections.find((connection) =>
           connection.target.node === target.id && connection.target.port === port.id) ?? null;
 
-        // The port's name is its little title, exactly like an output's.
-        const head = document.createElement('div');
-        head.className = 'wiring-port';
-        head.textContent = port.label;
+        if (port.type !== groupType) {
+          groupType = port.type;
+          group = document.createElement('div');
+          group.className = 'wiring-port-group';
+          const head = document.createElement('div');
+          head.className = 'wiring-port';
+          head.textContent = TYPE_LABELS[port.type] ?? port.label;
+          group.appendChild(head);
+          ports.appendChild(group);
+        }
 
         // Whatever lands on this port gets the same sentence it already showed
         // empty, read from the wire's far end.
@@ -271,21 +409,24 @@ export function initWiringUI({ signalStore, engine }) {
         if (wire) {
           box = connectionCard(wire, signalStore.get(wire.source), { reverse: true });
         } else {
-          // Unwired, a trigger port still states how often it will let itself be
-          // fired — the same sentence it will show once something is patched in,
-          // so the box says the same thing before and after.
+          // Unwired, a port still states how it will take whatever lands on it —
+          // the same sentence it will show once something is patched in, so the
+          // box says the same thing before and after. A level's half-sentence
+          // reads as an unfinished one, which is exactly what it is.
           box = document.createElement('div');
           box.className = 'wiring-map wiring-map-draft';
           const settings = document.createElement('div');
           settings.className = 'wiring-map-settings';
           controlOptions(settings, { ...port, node: target.id });
-          if (port.type === 'trigger') {
-            // Only a trigger has a pace to hold, so only a trigger's box is
-            // somewhere an edit to one can be read back from.
-            box.dataset.paceKey = paceKey(target.id, port.id);
-            settings.appendChild(sentence(
-              'At most every', numberInput(paceOf(target.id, port.id), 'cooldownMs'), 'ms',
-            ));
+          // Only a pace you are actually offered and a level's smoothing are
+          // settings of the port's own, so only their boxes are somewhere an
+          // edit to one can be read back from.
+          const paced = port.type === 'trigger' && port.pace == null;
+          if (paced || port.type === 'level') {
+            box.dataset.portKey = portKey(target.id, port.id);
+            settings.appendChild(paced
+              ? sentence('Limit trigger', paceSelect(paceOf(target.id, port.id)))
+              : landingSentence(port, smoothingOf(target.id, port.id)));
           }
           if (settings.childElementCount) box.appendChild(settings);
         }
@@ -293,7 +434,7 @@ export function initWiringUI({ signalStore, engine }) {
         // The jack lives inside the box, against its left wall — the mirror of
         // an output's, since this is the edge a cable arrives at rather than
         // leaves from. Last in the markup, because the box lays itself out
-        // reversed, which puts it hard against that outer edge. A setting has
+        // reversed, which puts it hard against that outer edge. A setting gets
         // none: nothing can be patched into it, so a socket would be a promise
         // the board can't keep.
         if (port.type !== 'setting') {
@@ -312,8 +453,8 @@ export function initWiringUI({ signalStore, engine }) {
         row.dataset.wired = String(Boolean(wire));
         // Everything is reachable until a cable is actually in the air.
         row.dataset.compatible = 'true';
-        row.append(head, maps);
-        ports.appendChild(row);
+        row.appendChild(maps);
+        group.appendChild(row);
       }
       card.appendChild(ports);
       ui.targets.appendChild(card);
@@ -324,6 +465,15 @@ export function initWiringUI({ signalStore, engine }) {
     if (transform.type === 'edge') return `edge-${transform.edge}`;
     if (transform.type === 'threshold') return `threshold-${transform.direction}`;
     return transform.type || (signal?.kind === 'event' ? 'event' : 'change');
+  }
+
+  /** How often a trigger may fire, as a speed rather than a duration. */
+  function paceSelect(cooldownMs) {
+    return addSelect(
+      PACES.map(([ms, label]) => [String(ms), label]),
+      String(nearestPace(cooldownMs)),
+      'cooldownMs',
+    );
   }
 
   function addSelect(options, value, field) {
@@ -339,6 +489,15 @@ export function initWiringUI({ signalStore, engine }) {
     return select;
   }
 
+  /** The direction a bearing is being asked about, on either of its jacks. */
+  function bearingSelect(value) {
+    return addSelect(
+      BEARINGS.map(([degrees, name]) => [String(degrees), name]),
+      String(value ?? 0),
+      'bearing',
+    );
+  }
+
   function numberInput(value, field) {
     const input = document.createElement('input');
     input.type = 'number';
@@ -348,12 +507,26 @@ export function initWiringUI({ signalStore, engine }) {
     return input;
   }
 
-  function percentInput(fraction, field) {
-    const input = numberInput(Math.round(fraction * 100), `${field}Percent`);
-    input.min = '0';
-    input.max = '95';
-    input.step = '5';
-    return input;
+  /** How closely a level follows what drives it, as what that looks like. */
+  function smoothingSelect(fraction) {
+    return addSelect(
+      SMOOTHINGS.map(([value, label]) => [String(value), label]),
+      String(nearestSmoothing(fraction)),
+      'smoothing',
+    );
+  }
+
+  /**
+   * What a level port does with whatever reaches it: the thing it sets, and how
+   * closely it follows the reading there. `phrase` names that thing in the words
+   * the game would use for it; a port that never named one falls back to its own
+   * label, so the sentence is always a whole one.
+   */
+  function landingSentence(port, smoothing) {
+    return sentence(
+      `Set ${port.phrase ?? `the ${port.label.toLowerCase()}`} while`,
+      smoothingSelect(smoothing),
+    );
   }
 
   // Lays out controls inline as running prose. Strings become plain words, so
@@ -413,23 +586,39 @@ export function initWiringUI({ signalStore, engine }) {
   // input is already saying.
   //   source — what the input turns its reading into: an instant, a range, a
   //            held on/off. True of the input whether or not it is wired.
-  //   target — how the control responds to that: how often it will act on it.
+  //   target — how the control responds to that: how often it will act on it,
+  //            or how closely it tracks it.
   function renderTransformSettings(host, transform, signal, port, { side = 'source' } = {}) {
     if (side === 'target') {
       // What the control itself does with whatever reaches it, chosen from the
       // handful of answers the game says are sensible.
       controlOptions(host, port);
-      // Only a trigger paces itself; a value port takes whatever it is handed,
-      // continuously, so there is nothing more to set on the receiving end.
+      // A trigger paces itself and a level decides how closely it follows; a
+      // hold is simply on or off, so it has nothing to set on this end. A port
+      // that fixed its own pace has nothing to say here either — the choice
+      // isn't the wire's to make, so the wire doesn't claim it.
       if (port.type === 'trigger') {
-        host.appendChild(sentence(
-          'At most every', numberInput(transform.cooldownMs ?? 160, 'cooldownMs'), 'ms',
-        ));
+        if (port.pace == null) {
+          host.appendChild(sentence(
+            'Limit trigger', paceSelect(transform.cooldownMs ?? 160),
+          ));
+        }
+      } else if (port.type === 'level') {
+        host.appendChild(landingSentence(port, transform.smoothing));
       }
       return;
     }
 
     if (isValuePort(port.type)) {
+      // A bearing names a direction rather than a number, so the whole setting
+      // is which one — there is no threshold to type, on either jack.
+      if (transform.type === 'facing') {
+        host.appendChild(sentence(
+          `While ${subjectOf(signal)} is facing`,
+          bearingSelect(transform.bearing),
+        ));
+        return;
+      }
       if (transform.type === 'gate') {
         // Which side of the line this holds on is the jack it hangs from, so it
         // reads as a plain word — offering it as a choice here would mean
@@ -449,6 +638,12 @@ export function initWiringUI({ signalStore, engine }) {
         ));
         return;
       }
+      // "Track … between … and …" — a whole statement about the input, the way
+      // every other jack's sentence is. The port at the far end says what it
+      // does with that in its own sentence rather than finishing this one:
+      // splitting a single clause across the cable read worse than two
+      // sentences that each stand up alone.
+      //
       // Reading the span backwards is what inverting means, so the sentence
       // says it outright instead of hiding it behind a checkbox.
       // Both ends the same is a range of nothing — reachable halfway through
@@ -456,23 +651,27 @@ export function initWiringUI({ signalStore, engine }) {
       // The unit lands after the second number only: "from -90 to 90°" is how
       // a span is written, and saying it at both ends reads as two facts.
       const span = sentence(
-        `Follows ${subjectOf(signal)} from`, numberInput(transform.min, 'min'),
-        'to', numberInput(transform.max, 'max'), ...unitWords(signal),
+        `Track ${subjectOf(signal)} between`, numberInput(transform.min, 'min'),
+        'and', numberInput(transform.max, 'max'), ...unitWords(signal),
       );
       if (transform.min === transform.max) {
         span.dataset.warn = 'true';
         span.appendChild(note('needs two different ends'));
       }
       host.appendChild(span);
-      host.appendChild(sentence(
-        'Smoothed by', percentInput(transform.smoothing || 0, 'smoothing'), '%',
-      ));
       return;
     }
 
     // Every condition opens the same way — "When …" — and states only the
     // moment it names; what that moment leads to is at the far end of the cable.
-    if (signal?.kind === 'event') {
+    if (signal?.kind === 'bearing') {
+      // "Turns to face" rather than "is facing": this is the moment it arrives,
+      // and the hold jack next to it is the one that means the whole time after.
+      host.appendChild(sentence(
+        `When ${subjectOf(signal)} turns to face`,
+        bearingSelect(transform.bearing),
+      ));
+    } else if (signal?.kind === 'event') {
       // A gesture has nothing to choose: it either happened or it didn't. The
       // sentence just says which gesture, since the card's name is the only
       // other place that appears.
@@ -519,8 +718,15 @@ export function initWiringUI({ signalStore, engine }) {
       signal?.kind,
       connection.transform,
     );
-    if (portOf(connection.target)?.type === 'trigger' && connection.transform.cooldownMs != null) {
-      rememberPace(connection.target.node, connection.target.port, connection.transform.cooldownMs);
+    // Whatever the port's own end of the sentence said goes back to the port,
+    // so cutting a wire leaves the empty box reading the way it did wired. A
+    // port that fixes its own pace never offered one, so there is nothing of
+    // the wire's to keep.
+    const { node, port } = connection.target;
+    const definition = portOf(connection.target);
+    const setting = definition?.type === 'trigger' ? 'cooldownMs' : 'smoothing';
+    if (definition?.pace == null && isPortSetting(setting, connection.transform[setting])) {
+      rememberPortSetting(node, port, { [setting]: connection.transform[setting] });
     }
     engine.removeConnection(connection.id);
   }
@@ -578,10 +784,14 @@ export function initWiringUI({ signalStore, engine }) {
     remove.type = 'button';
     remove.className = 'icon-btn wiring-remove';
     remove.dataset.removeConnection = connection.id;
+    // The two ends by name, and no more: the connector each hangs off used to be
+    // named here too, back when a port was called what it did. Now that a port
+    // is called what it is, that half read as "Sound · Level from Move · Hold" —
+    // four names for two things. The button only has to be told apart from the
+    // other ✕ on the board, and the input and the control do that.
     remove.setAttribute(
       'aria-label',
-      `Unwire ${signal?.label || connection.source} · ${connectionOutput(connection).label}`
-      + ` from ${target.label} · ${port.label}`,
+      `Unwire ${signal?.label || connection.source} from ${target.label}`,
     );
     remove.textContent = '✕';
     header.append(liveValue, remove);
@@ -642,11 +852,18 @@ export function initWiringUI({ signalStore, engine }) {
     const connection = engine.addConnection(channel, { node, port }, outputId);
     if (!connection) return;
     // Whatever the jack's sentence already said is what the new wire does, and
-    // whatever the port's sentence said is the pace it does it at.
+    // whatever the port's sentence said is how it takes it. The port's half goes
+    // on second because that half is the port's to own: the jack's draft may
+    // carry a smoothing from wherever it was last patched, and the port it lands
+    // on is what the sentence there actually read.
     const draft = drafts.get(draftKey(channel, outputId));
     if (draft) engine.updateConnection(connection.id, { transform: draft.transform });
     if (target?.type === 'trigger') {
-      engine.updateConnection(connection.id, { transform: { cooldownMs: paceOf(node, port) } });
+      engine.updateConnection(connection.id, {
+        transform: { cooldownMs: target.pace ?? paceOf(node, port) },
+      });
+    } else if (target?.type === 'level') {
+      engine.updateConnection(connection.id, { transform: { smoothing: smoothingOf(node, port) } });
     }
     renderSources();
     renderTargets();
@@ -730,6 +947,57 @@ export function initWiringUI({ signalStore, engine }) {
     }, fired ? 180 : 80));
   }
 
+  // A jack that sits off the bottom of the screen shouldn't mean letting go of
+  // the cable and starting again: while a cable is in the air, holding the
+  // pointer near an edge scrolls that way, faster the closer to the edge it is.
+  const EDGE_BAND = 72;
+  const EDGE_SPEED = 20;
+  let edgeFrame = null;
+
+  function scrollParent(element) {
+    for (let node = element; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      const scrolls = /(auto|scroll|overlay)/.test(style.overflowY + style.overflowX);
+      if (scrolls && (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth)) {
+        return node;
+      }
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function edgeDelta(position, near, far) {
+    if (position < near + EDGE_BAND) return -EDGE_SPEED * Math.min(1, (near + EDGE_BAND - position) / EDGE_BAND);
+    if (position > far - EDGE_BAND) return EDGE_SPEED * Math.min(1, (position - (far - EDGE_BAND)) / EDGE_BAND);
+    return 0;
+  }
+
+  function stopEdgeScroll() {
+    if (edgeFrame !== null) cancelAnimationFrame(edgeFrame);
+    edgeFrame = null;
+  }
+
+  function runEdgeScroll() {
+    edgeFrame = null;
+    if (!drag?.moved) return;
+    const container = scrollParent(ui.board);
+    const page = container === document.scrollingElement || container === document.documentElement;
+    const box = page
+      ? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+      : container.getBoundingClientRect();
+    const dx = edgeDelta(drag.pointerX, box.left, box.right);
+    const dy = edgeDelta(drag.pointerY, box.top, box.bottom);
+    if (!dx && !dy) return;
+    container.scrollBy(dx, dy);
+    // The pointer hasn't moved, but the jacks under it have, so the cable is
+    // redrawn from the same screen point against the board's new position.
+    drawDragCable(drag.pointerX, drag.pointerY);
+    edgeFrame = requestAnimationFrame(runEdgeScroll);
+  }
+
+  function nudgeEdgeScroll() {
+    if (edgeFrame === null) edgeFrame = requestAnimationFrame(runEdgeScroll);
+  }
+
   // Wiring is a drag between two jacks, and nothing else: the cable you are
   // holding is the instruction, so there is no pending selection to explain and
   // no running commentary to read. A cable can be pulled from either end — you
@@ -747,6 +1015,8 @@ export function initWiringUI({ signalStore, engine }) {
       end: rowSelector === '.wiring-out-row' ? 'source' : 'target',
       x: event.clientX,
       y: event.clientY,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
       moved: false,
     };
     jack.setPointerCapture(event.pointerId);
@@ -762,10 +1032,16 @@ export function initWiringUI({ signalStore, engine }) {
       // out — the rule shows itself rather than waiting to refuse the drop.
       showReachable(drag.type);
     }
-    if (drag.moved) drawDragCable(event.clientX, event.clientY);
+    drag.pointerX = event.clientX;
+    drag.pointerY = event.clientY;
+    if (drag.moved) {
+      drawDragCable(event.clientX, event.clientY);
+      nudgeEdgeScroll();
+    }
   });
   document.addEventListener('pointerup', (event) => {
     if (!drag) return;
+    stopEdgeScroll();
     if (drag.moved) {
       // Whichever end the cable was pulled from, the other end is what it is
       // looking to land on.
@@ -806,17 +1082,14 @@ export function initWiringUI({ signalStore, engine }) {
     if (!connection || !signal) return;
     const low = signal.observedMin ?? signal.min;
     const high = signal.observedMax ?? signal.max;
-    if (low === high) {
-      setStatus(`Move ${signal.label} through its full range, then calibrate again.`);
-      return;
-    }
+    // Nothing to fit until the sensor has actually moved.
+    if (low === high) return;
     // Calibrating answers "what does this sensor actually read", not "which way
     // round should it drive the control" — so a span the person deliberately
     // reversed comes back reversed, fitted to the new numbers.
     const flipped = connection.transform.min > connection.transform.max;
     const [min, max] = flipped ? [high, low] : [low, high];
     engine.updateConnection(connection.id, { transform: { min, max } });
-    setStatus(`Calibrated ${signal.label} to its observed ${low}–${high} range.`);
   }
   ui.sources.addEventListener('click', handleMapClick);
   ui.targets.addEventListener('click', handleMapClick);
@@ -839,8 +1112,6 @@ export function initWiringUI({ signalStore, engine }) {
     }
     if (field === 'invert') return { invert: control.value === 'true' };
     if (field === 'direction') return { direction: control.value };
-    // The sentence talks in percent; the transform stores a fraction.
-    if (field === 'smoothingPercent') return { smoothing: Number(control.value) / 100 };
     return { [field]: Number(control.value) };
   }
 
@@ -856,18 +1127,15 @@ export function initWiringUI({ signalStore, engine }) {
       return;
     }
 
-    const card = event.target.closest('[data-connection-id], [data-draft-key], [data-pace-key]');
+    const card = event.target.closest('[data-connection-id], [data-draft-key], [data-port-key]');
     if (!card) return;
 
-    // An unwired port has no connection either; the pace it is set to is what
-    // the next wire landing here will run at.
-    const { paceKey: pace } = card.dataset;
-    if (pace) {
-      const next = Number(event.target.value);
-      if (Number.isFinite(next) && next >= 0) {
-        paces.set(pace, next);
-        savePortPaces(draftStorage, paces);
-      }
+    // An unwired port has no connection either; what it is set to is what the
+    // next wire landing here will run at.
+    const { portKey: emptyPort } = card.dataset;
+    if (emptyPort) {
+      const patch = fieldPatch(event.target, field, {});
+      if (isPortSetting(field, patch[field])) setPortSetting(emptyPort, patch);
       renderTargets();
       return;
     }

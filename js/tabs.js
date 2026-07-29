@@ -20,8 +20,13 @@ export function initTabs() {
     if (setHash) history.replaceState(null, '', '#' + keyOf(tab));
   }
 
+  // Screens that have been renamed, by the name they used to answer to. A link
+  // somebody wrote down or bookmarked outlives the wording we settled on, so
+  // the old key keeps working rather than landing on nothing.
+  const RENAMED = { starters: 'sensing', config: 'controls', customize: 'design' };
+
   function activateKey(key, opts) {
-    const tab = document.getElementById('tab-' + (key === 'starters' ? 'sensing' : key));
+    const tab = document.getElementById('tab-' + (RENAMED[key] ?? key));
     if (tab) activate(tab, opts);
     return !!tab;
   }

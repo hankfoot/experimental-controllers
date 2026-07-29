@@ -35,6 +35,14 @@ const OUTPUTS = Object.freeze({
   event: [
     { id: 'trigger', type: 'trigger', label: 'Trigger', hint: 'Fires the instant it happens' },
   ],
+  // A bearing offers the two things you can ask a direction, and neither is
+  // measured along a line: whether it just arrived somewhere, and whether it is
+  // there now. It deliberately has no level jack — mapping a circle onto a
+  // control means picking a seam for the control to jump across.
+  bearing: [
+    { id: 'trigger', type: 'trigger', label: 'Trigger', hint: 'Fires when it turns to face a direction' },
+    { id: 'hold', type: 'hold', label: 'Hold', hint: 'On while it points that way' },
+  ],
   binary: [
     { id: 'trigger', type: 'trigger', label: 'Trigger', hint: 'Fires on press, or on release' },
     { id: 'hold', type: 'hold', label: 'Hold', hint: 'On while held, off when released' },
@@ -49,6 +57,18 @@ const OUTPUTS = Object.freeze({
 
 /** Which way a gated hold compares, read off the jack it hangs from. */
 export const holdDirection = (outputId) => (outputId === 'hold-below' ? 'below' : 'above');
+
+// The directions a bearing can be asked about, as [degrees, name]. Four rather
+// than eight because the sectors have to be wide enough to hit reliably with a
+// homemade object in a room full of magnetic junk.
+export const BEARINGS = Object.freeze([
+  [0, 'north'],
+  [90, 'east'],
+  [180, 'south'],
+  [270, 'west'],
+]);
+
+export const isBearing = (value) => BEARINGS.some(([degrees]) => degrees === value);
 
 export function sourceOutputs(signal) {
   return signal ? OUTPUTS[signal.kind] ?? OUTPUTS.binary : [];
@@ -78,8 +98,13 @@ const PHRASING = Object.freeze({
   },
 });
 
+// For an on/off input that never said what it physically is — one discovered
+// live from a board whose code we did not generate, most often. "On" and "off"
+// described a switch nobody built: everything that reports two states here is
+// something you press, so it is spoken about that way and only the subject
+// stays vague.
 const ANONYMOUS = Object.freeze({
-  subject: 'it', on: 'on', off: 'off', while: 'on', until: 'off',
+  subject: 'it', on: 'pressed', off: 'released', while: 'held down', until: 'not held down',
 });
 
 /** How a given on/off input should be spoken about. */
@@ -89,11 +114,13 @@ export function phrasingOf(signal) {
 
 /**
  * What to call an input in the middle of a sentence. On/off inputs are named by
- * what they physically are; a reading is named by what it reads, which its own
- * label already says.
+ * what they physically are; a reading is named by what it reads, which is
+ * usually what its own label says — and when it isn't, the channel spells the
+ * phrase out itself rather than have the sentence follow a lamp around.
  */
 export function subjectOf(signal) {
   if (PHRASING[signal?.form]) return PHRASING[signal.form].subject;
+  if (signal?.subject) return signal.subject;
   return signal?.label ? `the ${signal.label.toLowerCase()}` : 'it';
 }
 
@@ -114,28 +141,28 @@ export function outputIdOf(signal, port, transform) {
   if (transform?.type === 'gate') {
     return transform.direction === 'below' ? 'hold-below' : 'hold-above';
   }
-  return transform?.type === 'hold' ? 'hold' : 'level';
+  if (transform?.type === 'hold' || transform?.type === 'facing') return 'hold';
+  return 'level';
 }
 
 export function canConnect(signal, port) {
   return Boolean(port && sourceOutputs(signal).some((output) => output.type === port.type));
 }
 
-// The ports a wire drives with a continuous stream, as opposed to a trigger that
-// fires at instants or a `setting`, which has no jack and is never driven at all.
-// Asking this rather than "not a trigger" is what keeps a jack-less port from
-// being handed a value it has no meaning for.
+// The ports a wire drives with a continuous stream, as opposed to a trigger,
+// which fires at instants and has nothing to hold between them.
 export function isValuePort(type) {
   return type === 'level' || type === 'hold';
 }
 
 // Which kind of port a transform is able to feed. Each transform belongs to
 // exactly one, so the port type and the transform can never drift apart:
-//   range — maps a span onto a level
-//   gate  — squares an analog reading off into a held 0/1
-//   hold  — passes a button's own 0/1 through as a hold
+//   range  — maps a span onto a level
+//   gate   — squares an analog reading off into a held 0/1
+//   hold   — passes a button's own 0/1 through as a hold
+//   facing — holds while a bearing points a given way
 // Everything else names a moment, and moments go to triggers.
 export function portTypeForTransform(type) {
   if (type === 'range') return 'level';
-  return type === 'gate' || type === 'hold' ? 'hold' : 'trigger';
+  return type === 'gate' || type === 'hold' || type === 'facing' ? 'hold' : 'trigger';
 }

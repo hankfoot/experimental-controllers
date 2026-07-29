@@ -1,4 +1,4 @@
-/* Experimental Game Controllers — Fidget Camp 2026
+/* Game Controller Workshop — Fidget Camp 2026
    Minimal, centered ("Google treatment"), with a Super Famicom four-color accent set. */
 
 :root {
@@ -9,13 +9,16 @@
   --ink-faint: #a2a7b0;
   --line:      #e8e9ed;
 
-  /* Super Famicom face-button colors, one per screen and now all four spoken for:
-     Set up=red, Sensing=yellow, Config=blue, Game=green. Home + all default
-     buttons/accents use neutral gray. */
+  /* Super Famicom face-button colors, one per screen and all four spoken for:
+     Set up=red, Sensing=yellow, Controls=blue, Game=green. Design is the fifth
+     screen and takes purple — the console's own shell colour rather than one of
+     its buttons, which suits a screen about the game's looks rather than its
+     controls. Home + all default buttons/accents stay neutral gray. */
   --red:    #e5484d;  --red-soft:    #fdecec;  --red-ink:    #d23a3f;
   --yellow: #f4b400;  --yellow-soft: #fff6df;  --yellow-ink: #a5760f;
   --green:  #34b24a;  --green-soft:  #e7f6ea;  --green-ink:  #2c9740;
   --blue:   #2f6bff;  --blue-soft:   #eaf1ff;  --blue-ink:   #2a60e6; /* logo diamond only */
+  --purple: #8b46d6;  --purple-soft: #f5edfd;  --purple-ink: #7d3bc4;
   --gray:   #4b4b52;  --gray-soft:   #eeedf0;  --gray-ink:   #46464d;
 
   --accent: var(--gray);
@@ -78,6 +81,18 @@ code {
    full-width row below. This is fixed at every width so connecting/disconnecting
    (which widens the status block) never reflows the header. */
 .topbar-right { display: flex; align-items: center; gap: 12px; order: 2; margin-left: auto; }
+/* Saving and opening. Quiet, because they are always there and are used once a
+   session at most — the Connect pair beside them is the loud one. */
+.theme-io {
+  padding: 6px 12px; font-size: .8rem; font-weight: 600;
+  color: var(--ink-soft); cursor: pointer;
+}
+.theme-io:hover { color: var(--ink); }
+.theme-io-note { font-size: .76rem; max-width: 26ch; text-align: right; }
+.theme-io-note:empty { display: none; }
+
+/* Set apart from the steps above it: this one takes things away. */
+.design-reset { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
 
 /* ---------- Status chip (the live-input button) ----------
    Always shown, sitting left of Connect; its label is the connection state
@@ -98,13 +113,68 @@ code {
   width: 8px; height: 8px; border-radius: 50%; flex: none;
   background: var(--ink-faint); transition: background .2s;
 }
-/* The dot mirrors connection state (yellow connecting, green connected) and
-   gently pulses whenever data is flowing. Purely on/off — it never reflects
-   any specific channel. */
+/* The dot mirrors connection state: yellow while connecting, green once a board
+   is on, amber when a connected board has gone quiet, red when it is gone. The
+   two unhappy ones tint the whole chip as well — a colour change on eight
+   pixels is not something you notice from across a room, and this is exactly
+   the thing somebody needs to notice. */
 .signal[data-state="connecting"] .sig-dot { background: var(--yellow); }
 .signal[data-state="connected"] .sig-dot { background: var(--green); }
-.signal[data-active="true"] .sig-dot { animation: sig-pulse 1.1s ease-in-out infinite; }
-@keyframes sig-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.3); } }
+.signal[data-state="stale"] .sig-dot { background: var(--yellow); }
+.signal[data-state="lost"] .sig-dot { background: var(--red); }
+.signal[data-state="stale"] {
+  border-color: color-mix(in srgb, var(--yellow) 55%, var(--line));
+  background: var(--yellow-soft); color: var(--yellow-ink);
+}
+.signal[data-state="lost"] {
+  border-color: color-mix(in srgb, var(--red) 55%, var(--line));
+  background: var(--red-soft); color: var(--red-ink);
+}
+
+/* Data arriving washes the whole chip green and lets it fade back.
+   The dot used to jump instead, which at ten readings a second read as a twitch
+   — a small thing moving fast is noise, and the same information spread over
+   the whole control is something you notice without looking at it. Purely
+   on/off; it never reflects any specific channel. */
+.signal[data-active="true"] { animation: sig-wash .5s ease-out; }
+@keyframes sig-wash {
+  from { background: var(--green-soft); border-color: color-mix(in srgb, var(--green) 45%, var(--line)); }
+  to { background: var(--bg); border-color: var(--line); }
+}
+/* The unhappy states keep their own colour throughout: a board that has gone
+   quiet is still quiet on the frame a stray reading arrives. */
+.signal[data-state="stale"][data-active="true"],
+.signal[data-state="lost"][data-active="true"] { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .signal[data-active="true"] { animation: none; background: var(--green-soft); }
+}
+
+/* ---------- Connect menu ---------- */
+/* Anchored under Connect, on the body, positioned in script. Above the
+   visualizer popover's z-index: both can be open, and this one was asked for
+   more recently. */
+.connect-menu {
+  position: fixed; z-index: 61;
+  display: flex; flex-direction: column; gap: 2px;
+  width: 250px; padding: 6px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  animation: pop-in .14s ease both;
+}
+.connect-menu[hidden] { display: none; }
+/* Glyph down the left, name and hint stacked beside it. */
+.connect-option {
+  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px;
+  align-items: center; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  background: none; border: none; border-radius: 10px; padding: 9px 11px;
+}
+.connect-glyph { grid-row: span 2; font-size: 1.15rem; }
+.connect-option strong { font-size: .9rem; font-weight: 600; }
+.connect-option span { font-size: .78rem; color: var(--ink-soft); }
+.connect-option:hover:not(:disabled) { background: var(--accent-soft); }
+.connect-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.connect-option:disabled { cursor: default; opacity: .45; }
 
 /* ---------- Visualizer popover ---------- */
 .viz-pop {
@@ -166,11 +236,13 @@ code {
 .tab:hover { background: var(--bg-soft); color: var(--ink); }
 .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* each screen gets its own accent: Home=gray (default above), Set up=red, Starters=yellow, Game=green */
-#tab-setup[aria-selected="true"]    { background: var(--red-soft);    color: var(--red-ink); }
-#tab-sensing[aria-selected="true"] { background: var(--yellow-soft); color: var(--yellow-ink); }
-#tab-config[aria-selected="true"]   { background: var(--blue-soft);   color: var(--blue-ink); }
-#tab-game[aria-selected="true"]     { background: var(--green-soft);  color: var(--green-ink); }
+/* each screen gets its own accent: Home=gray (default above), Set up=red,
+   Sensing=yellow, Controls=blue, Design=purple, Game=green */
+#tab-setup[aria-selected="true"]     { background: var(--red-soft);    color: var(--red-ink); }
+#tab-sensing[aria-selected="true"]   { background: var(--yellow-soft); color: var(--yellow-ink); }
+#tab-controls[aria-selected="true"]    { background: var(--blue-soft);   color: var(--blue-ink); }
+#tab-design[aria-selected="true"] { background: var(--purple-soft); color: var(--purple-ink); }
+#tab-game[aria-selected="true"]      { background: var(--green-soft);  color: var(--green-ink); }
 
 .panel[hidden] { display: none; }
 .panel:not([hidden]) { animation: fade .28s ease both; }
@@ -199,30 +271,6 @@ h1 {
 .home-lede { font-size: 1.14rem; color: var(--ink-soft); max-width: 52ch; margin: 0 auto; }
 
 .home-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 30px 0 0; }
-
-.home-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 14px; margin-top: 48px; }
-.home-card {
-  text-align: left; font: inherit; color: inherit; cursor: pointer;
-  background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 20px;
-  display: flex; flex-direction: column; gap: 5px;
-  transition: border-color .15s, transform .12s, box-shadow .15s;
-}
-.home-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.home-card-num {
-  width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
-  font-weight: 700; font-size: .9rem; color: #fff;
-}
-.home-card h3 { margin: 6px 0 0; font-size: 1.08rem; font-weight: 600; }
-.home-card p { margin: 0; color: var(--ink-soft); font-size: .86rem; }
-.home-card-go { margin-top: 8px; font-weight: 600; font-size: .85rem; }
-/* each card is colored to match the screen it opens */
-.home-card--green  { --c: var(--green); }
-.home-card--yellow { --c: var(--yellow); }
-.home-card--red    { --c: var(--red); }
-.home-card--gray   { --c: var(--gray); }
-.home-card .home-card-num { background: var(--c); }
-.home-card .home-card-go { color: var(--c); }
-.home-card:hover { border-color: var(--c); }
 
 /* ---------- Blocks ---------- */
 .block { margin-top: 8px; }
@@ -262,9 +310,24 @@ em { color: var(--accent); font-style: italic; }
 .step:not(:last-child) .step-body { border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .step-body h3 { margin: 0 0 5px; font-size: 1.05rem; font-weight: 600; }
 .step-body p { margin: 0; color: var(--ink-soft); max-width: 60ch; }
+/* Whatever a step mounts — a grid of settings, a row of drawings — stands off
+   from the prose introducing it rather than butting against it. */
+.step-body > :is(.settings-grid, .sprite-grid, .theme-preview) { margin-top: 14px; }
+/* The step's own paragraphs are measured for reading. The sentences the app
+   builds inside a card are rows of controls that happen to be a <p>, and the
+   reading measure squeezes them onto one line each. */
+.step-body .wiring-sentence { max-width: none; }
+/* A settings group packs its rows to their content width, which is right for a
+   row of two dropdowns and wrong for one holding a text field: the field's
+   flex-basis then exceeds the shrink-wrapped box and the label wraps above it,
+   with most of the card sitting empty alongside. These rows take the full
+   width and wrap only when they genuinely run out of it. */
+#panel-design .settings-group > .wiring-sentence { align-self: stretch; }
 
-/* The Sensing page reuses the step list but in its own color (Setup is red). */
+/* Sensing and Design reuse the step list, each in its own color (Setup, the
+   first to have one, is red). */
 #panel-sensing .step-num { background: var(--yellow); }
+#panel-design .step-num { background: var(--purple); }
 
 /* Optional (un-numbered) step */
 .step-num.step-num--opt {
@@ -402,6 +465,72 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .builder-warn strong { color: var(--ink); }
 .builder-warn[hidden] { display: none; }
 
+/* The same shape as the builder's warning, one screen along: yellow for "you
+   could wire more", red for "nothing on your controller reaches the game". */
+.game-warn {
+  margin: 0 0 18px; padding: 12px 16px; border-radius: var(--radius);
+  font-size: .88rem; max-width: 720px;
+  background: var(--yellow-soft); border: 1px solid color-mix(in srgb, var(--yellow) 40%, var(--line));
+  color: var(--yellow-ink);
+}
+.game-warn[data-level="empty"] {
+  background: var(--red-soft); border-color: color-mix(in srgb, var(--red) 40%, var(--line));
+  color: var(--red-ink);
+}
+.game-warn strong { color: var(--ink); }
+.game-warn .link-btn { color: inherit; }
+.game-warn[hidden] { display: none; }
+
+/* ---------- Collapsible how-to ---------- */
+/* Native <details>, because the browser already does the state, the keyboard
+   and the announcement — and there was no accordion anywhere else in the app to
+   match, so inventing a JS one would have been inventing a second pattern. */
+.how {
+  margin-top: 12px; max-width: 720px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 11px;
+}
+.how + .how { margin-top: 8px; }
+.how > summary {
+  cursor: pointer; list-style: none; padding: 11px 15px;
+  font-size: .9rem; font-weight: 600; color: var(--ink);
+  display: flex; align-items: center; gap: 9px; border-radius: 10px;
+}
+.how > summary::-webkit-details-marker { display: none; }
+/* Our own marker, so it can turn. The default triangle is unstyleable in Safari
+   and sits at a different size in every browser. */
+.how > summary::before {
+  content: '▸'; color: var(--ink-faint); font-size: .85rem;
+  transition: transform .15s ease;
+}
+.how[open] > summary::before { transform: rotate(90deg); }
+.how > summary:hover { background: var(--bg-soft); }
+.how > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.how-body { padding: 0 15px 14px; }
+.how-body p { margin: 0 0 10px; font-size: .88rem; color: var(--ink-soft); }
+.how-body p:last-child { margin-bottom: 0; }
+.how-body .shot { margin-top: 12px; }
+/* A warning inside a how-to: the one paragraph that is the answer when the
+   thing simply will not connect. */
+.how-warn {
+  padding: 10px 13px; border-radius: 10px;
+  background: var(--yellow-soft); border: 1px solid color-mix(in srgb, var(--yellow) 40%, var(--line));
+  color: var(--yellow-ink);
+}
+.how-warn strong { color: var(--ink); }
+
+/* Marked out rather than left blank, so it is obvious these are still to come
+   and roughly what each one has to show. */
+.shot-placeholder { display: flex; flex-direction: column; gap: 8px; }
+.shot-slot {
+  display: grid; place-items: center; min-height: 84px; padding: 12px 16px;
+  text-align: center; font-size: .8rem; color: var(--ink-faint);
+  background: var(--bg-soft); border: 1px dashed var(--line); border-radius: 10px;
+}
+.shot-placeholder figcaption { font-size: .76rem; color: var(--ink-faint); }
+@media (prefers-reduced-motion: reduce) {
+  .how > summary::before { transition: none; }
+}
+
 /* ---------- Builder output ---------- */
 .code-block-wide { max-width: 720px; }
 .build-empty { margin: 0; color: var(--ink-faint); font-size: .9rem; }
@@ -490,6 +619,18 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .wiring-head p { margin: 3px 0 0; max-width: 64ch; color: var(--ink-soft); font-size: .86rem; }
 .wiring-clear { flex: none; padding: 6px 13px; font-size: .8rem; }
 
+.step-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.step-head h3 { margin: 0; }
+.builder-clear { flex: none; padding: 6px 13px; font-size: .8rem; }
+
+.wiring-nothing {
+  padding: 30px 22px; text-align: center;
+  background: var(--bg-soft); border: 1px dashed var(--line); border-radius: var(--radius);
+}
+.wiring-nothing[hidden], .wiring-board[hidden], .wiring-clear[hidden] { display: none; }
+.wiring-nothing p { margin: 0; color: var(--ink-soft); font-size: .9rem; }
+.wiring-nothing .placeholder-title { margin-bottom: 6px; color: var(--ink); font-weight: 600; }
+
 .wiring-board {
   position: relative; display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
@@ -514,13 +655,18 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   margin: 0; padding: 14px; color: var(--ink-faint); font-size: .83rem;
   background: var(--bg); border: 1px dashed var(--line); border-radius: 10px;
 }
-/* Config's own colour — the fourth face button, after Set up's red, Sensing's
+/* The Controls screen's own colour — the fourth face button, after Set up's red, Sensing's
    yellow and Game's green. It marks everything the board highlights: the jacks,
    the cables between them, and the words that name either. Green is left to
    mean exactly one thing on this screen — live, firing, now — so the two never
    have to be told apart by guesswork. */
-#panel-config {
+#panel-controls {
   --screen: var(--blue); --screen-soft: var(--blue-soft); --screen-ink: var(--blue-ink);
+}
+/* Design carries its own the same way, which is what colours the focus rings
+   on its dropdowns and the tool you have picked up in the paint editor. */
+#panel-design {
+  --screen: var(--purple); --screen-soft: var(--purple-soft); --screen-ink: var(--purple-ink);
 }
 /* Two connector types, and they must match end to end — but the rule is carried
    by the SHAPE of the jack, not by colour:
@@ -566,11 +712,11 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
    beside the name rather than a badge on it — it qualifies the input, and a
    chip would give it the same weight as the channel it sits next to. */
 .wiring-source-mode { flex: none; font-size: .74rem; color: var(--ink-faint); }
-/* What the input reads, on its own line under the name — it explains the block
-   rather than qualifying the name, so it breaks the line instead of sitting in
-   it, and stays quiet enough that the name still leads. */
+/* What the input reads, its own line spanning the full card — flush with the
+   emoji rather than indented under the name, so it reads as a caption on the
+   whole row instead of a continuation of the title. */
 .wiring-source-desc {
-  width: 100%; margin-top: -2px;
+  margin: 4px 0 0;
   font-size: .74rem; line-height: 1.35; color: var(--ink-faint);
 }
 .wiring-source-reading {
@@ -591,7 +737,7 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   font-size: .7rem; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; color: var(--gray-ink);
 }
-:is(.wiring-out-row, .wiring-port-row):has(.wiring-map.active) :is(.wiring-out, .wiring-port) {
+:is(.wiring-out-group, .wiring-port-group):has(.wiring-map.active) :is(.wiring-out, .wiring-port) {
   color: var(--green-ink);
 }
 
@@ -627,9 +773,15 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   outline: 3px solid var(--wire-soft); outline-offset: 1px;
 }
 
-.wiring-target {
+/* A settings card on the Design screen is the same object as a target card
+   on the wiring board — a titled group of sentences — so it is the same rule.
+   What differs is only that nothing in it has a jack. */
+.wiring-target, .settings-card {
   padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 11px;
 }
+.settings-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.settings-group { display: flex; flex-direction: column; align-items: start; gap: 6px; }
+.settings-group + .settings-group { margin-top: 10px; }
 .wiring-target-heading { display: flex; gap: 10px; margin-bottom: 10px; }
 .wiring-target-heading > span { font-size: 1.12rem; line-height: 1.25; }
 .wiring-target-heading h4 { margin: 0; font-size: .88rem; }
@@ -644,7 +796,10 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   display: flex; flex-direction: column; gap: 15px; align-items: stretch;
   margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line);
 }
-.wiring-port-row { display: flex; flex-direction: column; gap: 5px; }
+/* A control is one block holding what it does, with its connector's name on the
+   group above it — the mirror of an output and its group. */
+.wiring-port-group { display: flex; flex-direction: column; gap: 5px; }
+.wiring-port-row { display: flex; flex-direction: column; }
 .wiring-port-maps { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 /* While a cable is in the air, whatever end it cannot land on steps back — the
    whole node, name and jack together, since it is the node that's unreachable
@@ -675,11 +830,13 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .wiring-cables path.active { --wire: var(--green); stroke-width: 6; opacity: 1; }
 .wiring-cables .wiring-cable-drag { stroke-dasharray: 7 7; opacity: .55; }
 
-.wiring-status { min-height: 1.4em; margin: 14px 2px 0; color: var(--green-ink); font-size: .8rem; }
-
-/* An output is one block: its name, and a box — full width, wired or not —
-   holding what it does. */
-.wiring-out-row { display: flex; flex-direction: column; gap: 5px; }
+/* A group is one connector type: its name, then every jack of that type. The
+   gap inside a group is smaller than the one between groups, so two holds read
+   as two ends of the same thing rather than as two unrelated blocks. */
+.wiring-out-group { display: flex; flex-direction: column; gap: 5px; }
+/* An output is one block: a box, full width, wired or not, holding what it
+   does. Its name lives on the group above it. */
+.wiring-out-row { display: flex; flex-direction: column; }
 .wiring-out-maps { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 /* The jack sits inside its own box, held off the outer wall by the same air it
    has above and below on a single-line box: the box's padding plus this margin
@@ -732,8 +889,12 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0;
   color: var(--ink); font-size: .8rem;
 }
+/* `line-height` is stated after `font: inherit`, and has to be: the shorthand
+   resets it, so these boxes were taking the body's 1.6 and setting a line taller
+   than the box it had to sit in — which is why the words met the bottom edge. */
 .wiring-sentence select, .wiring-sentence input {
-  min-height: 28px; padding: 3px 6px; font: inherit; font-size: .8rem; font-weight: 600;
+  min-height: 30px; padding: 5px 8px; font: inherit; font-size: .8rem; font-weight: 600;
+  line-height: 1.25;
   color: var(--ink); background: var(--bg);
   border: 1px solid var(--line); border-radius: 7px;
 }
@@ -751,7 +912,7 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 .wiring-calibrate { padding: 5px 9px; font-size: .7rem; }
 
 /* ---------- Game ---------- */
-/* The scheme picker (Config screen) is the first control card's identity line,
+/* The scheme picker (Controls screen) is the first control card's identity line,
    answering to an input's name on the other side of the board: the title sits
    at the same level, and the ports it decides on follow under the same rule. */
 .game-picker-label {
@@ -770,8 +931,11 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   margin: 7px 1px 0; color: var(--ink-soft); font-size: .73rem; line-height: 1.45;
 }
 
+/* Fills its column. It used to be capped at 520px, which suited the field back
+   when that was taller than it was wide; a widescreen one boxed into the same
+   cap would be a letterbox with most of the page empty either side of it. */
 .game-shell {
-  width: 100%; max-width: 520px; margin-inline: auto; padding: 14px;
+  width: 100%; padding: 14px;
   background: var(--bg-soft); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: var(--shadow);
 }
@@ -784,19 +948,27 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
   font-size: .68rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .07em; color: var(--ink-faint);
 }
-.game-stat strong { font-family: var(--mono); font-size: 1rem; }
+/* The theme's own face, so the score here and the score drawn on the canvas an
+   inch below are the same number in the same type. Falls back to the mono face
+   before the game has said which font it is using. */
+.game-stat strong { font-family: var(--game-font, var(--mono)); font-size: 1rem; }
 /* The active scheme is a name, not a number, so it keeps the body face. */
 #game-scheme { font-family: var(--sans); font-size: .92rem; }
 .game-reset { margin-left: auto; padding: 6px 13px; font-size: .8rem; }
 #game-canvas {
-  display: block; width: 100%; height: auto; aspect-ratio: 4 / 5;
+  display: block; width: 100%; height: auto; aspect-ratio: 8 / 5;
   background: var(--blue-soft); border: 1px solid var(--line); border-radius: 12px;
   cursor: pointer; touch-action: manipulation;
 }
 #game-canvas:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
 .game-controls { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
-.game-buttons { display: flex; gap: 8px; flex: none; }
-.game-action { min-width: 78px; background: var(--green); border-color: var(--green); touch-action: none; }
+/* The keys, written out. There used to be a row of on-screen buttons here —
+   a third way to play, next to the keyboard and the controller you built, that
+   nobody reached for and that left the keys themselves undocumented. */
+.game-keys {
+  margin: 0; flex: none; font-size: .8rem; font-weight: 600;
+  color: var(--ink-soft); letter-spacing: .01em;
+}
 .game-controls p { margin: 0; color: var(--ink-soft); font-size: .84rem; line-height: 1.35; }
 
 /* ---------- Footer ---------- */
@@ -805,7 +977,6 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
-  .home-cards { grid-template-columns: 1fr; }
   .wiring-board { grid-template-columns: 1fr; gap: 22px; }
   /* Nothing to run between the columns once they stack, so the jacks are just
      type markers sitting in their boxes. */
@@ -817,6 +988,10 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
      five letters at the end are what tell one board from another, so leave room
      for the whole name and let the max-width only catch absurdly long ones. */
   .sig-label { max-width: 62vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Only one of Connect and Disconnect is ever up, so the row is no longer than
+     it was — but Disconnect is the longer word, and this is a narrow screen. */
+  .topbar-right { gap: 8px; }
+  .topbar-right .btn { padding: 8px 12px; }
   .viz-pop { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; }
   .wiring-panel { padding: 14px; margin-inline: -8px; }
   .wiring-targets { grid-template-columns: 1fr; }
@@ -828,3 +1003,413 @@ a.tile:hover { border-color: var(--yellow); transform: translateY(-2px); }
 @media (prefers-reduced-motion: reduce) {
   .panel:not([hidden]), .viz-pop { animation: none; }
 }
+
+/* ---------- Theme: sprites, scene, sound, words ---------- */
+/* The controls read as the same sentences the rest of the app uses; what's new
+   is that some of them are a canvas you draw on. The preview sits beside the
+   lot on a wide screen, because a color you pick is a color you want to see. */
+/* `.note` is a callout with a box around it. These are asides — a line of help
+   under a heading, or a message a control leaves behind after you use it — so
+   they carry no weight at all, and take up no room when they say nothing. */
+.theme-note { margin: 0; font-size: .74rem; line-height: 1.4; color: var(--ink-soft); }
+.theme-note:empty { display: none; }
+
+/* Above the drawings and the full width of the column, at the same shape the
+   game is played at. Beside them it was a 220px sliver of a widescreen field —
+   too small to judge a drawing by, which is the only reason it is there. */
+.theme-preview { margin-bottom: 12px; }
+.theme-preview-canvas {
+  display: block; width: 100%; height: auto; aspect-ratio: 8 / 5;
+  border-radius: var(--radius);
+  border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--bg);
+}
+
+/* A slot drawn out of square gets a thumbnail to match, in the direction it is
+   actually out of square — a strip floating in a 46px box reads as a mistake
+   rather than as a different shape. */
+.sprite-slot[data-shape="wide"] .sprite-preview { width: 74px; }
+.sprite-slot[data-shape="tall"] .sprite-preview { width: 30px; }
+
+/* --- Sprite slots --- */
+/* A row, not a card: a thumbnail, what it is, and two things you can do to it.
+   The drawing itself carries the weight, so everything around it stays quiet. */
+.sprite-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(248px, 1fr)); }
+.sprite-slot {
+  padding: 8px 10px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 11px;
+}
+.sprite-row { display: flex; align-items: center; gap: 10px; }
+/* A plain block, not a grid or a flex line. Both of those size their tracks to
+   the content by default, so a 256-square canvas grew the track past the 46px
+   box and the thumbnail's own `max-width: 100%` then measured itself against
+   that — leaving the drawing bigger than the tile meant to hold it. */
+.sprite-preview {
+  flex: none; width: 46px; height: 46px; border-radius: 8px; overflow: hidden;
+  /* The checkerboard says "transparent" without a caption, and matches the one
+     inside the editor so a thumbnail and its drawing read as the same object. */
+  background:
+    conic-gradient(from 90deg, #e4e8ef 25%, #f2f4f8 0 50%, #e4e8ef 0 75%, #f2f4f8 0) 0 0 / 10px 10px;
+}
+/* The canvas is cropped to the drawing, so `contain` shows that art at the
+   largest size which still fits, whatever shape it happens to be — letterboxed
+   in the tile rather than stretched to it or spilling out of it. */
+.sprite-thumb { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sprite-text { min-width: 0; display: flex; flex-direction: column; }
+.sprite-label { font-size: .82rem; font-weight: 600; line-height: 1.3; }
+.sprite-actions { display: flex; gap: 4px; margin-left: auto; }
+.sprite-action {
+  flex: none; width: 30px; height: 30px; padding: 0; font-size: .85rem; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+}
+.sprite-action:hover:not(:disabled) { background: var(--bg-soft); }
+.sprite-action:disabled { opacity: .35; cursor: default; }
+.sprite-action[aria-expanded="true"] {
+  background: var(--screen, var(--accent)); border-color: transparent;
+}
+/* --- The paint editor --- */
+/* A modal `<dialog>`, so the backdrop, Escape, the focus trap and making the
+   rest of the page inert are all the browser's job rather than ours. */
+.paint-dialog {
+  padding: 0; border: none; background: none; max-width: 100vw; max-height: 100dvh;
+  /* The top layer sits outside the panel that opened it, so the screen colour
+     does not reach here on its own. The editor only ever opens from Design,
+     so it carries that screen's purple explicitly. */
+  --screen: var(--purple);
+  color: var(--ink);
+}
+.paint-dialog::backdrop {
+  background: rgba(27, 28, 32, .5);
+  backdrop-filter: blur(2px);
+}
+.paint-shell {
+  display: flex; flex-direction: column; gap: 12px;
+  width: min(92vw, 440px); max-height: 92dvh; overflow: auto; padding: 16px;
+  background: var(--bg); border-radius: 20px; box-shadow: var(--shadow-md);
+}
+/* The sky is drawn wide, and a whole sky inside a 408px box is not something
+   anybody can work in. Wider, but still short enough that the toolbar and the
+   footer clear `max-height` on a laptop. */
+.paint-shell[data-wide] { width: min(94vw, 720px); }
+.paint-head { display: flex; align-items: center; gap: 12px; }
+.paint-head strong { flex: 1; font-size: 1rem; letter-spacing: -.01em; }
+/* The canvas size, stated quietly — reference rather than a control. */
+.paint-size {
+  font-size: .74rem; font-weight: 600; color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Holds the canvas and the ring that rides over it. */
+.paint-stage { position: relative; }
+
+/* The brush, worn by the pointer: a ring the exact width of the stroke, so how
+   broad "thick" is is answered on the picture rather than by a label. Two rings
+   rather than one — a dark hairline inside a white one — because a single ring
+   in the brush colour vanishes against a patch of its own colour, which is
+   precisely when you are trying to judge how wide it is. */
+.paint-cursor {
+  position: absolute; z-index: 1; translate: -50% -50%;
+  border: 1.5px solid currentColor; border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .9), inset 0 0 0 1.5px rgba(255, 255, 255, .9);
+  pointer-events: none;
+}
+/* Rubbing out is not a colour, so its ring is the dashed outline of a hole. */
+.paint-cursor[data-tool="eraser"] {
+  border-style: dashed; border-color: var(--ink);
+}
+
+/* The bucket, carried. A ring would be a lie here — the flood goes as far as
+   the colour under the pointer goes, not as far as any circle. */
+.paint-cursor[data-tool="fill"] { border: none; box-shadow: none; }
+.paint-cursor[data-tool="fill"]::before {
+  content: "🪣";
+  position: absolute; left: 3px; bottom: 1px;
+  font-size: 20px; line-height: 1;
+  /* Legible over a dark drawing as well as a light one. */
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, .95));
+}
+/* Where the flood actually starts. With the native crosshair gone, an emoji on
+   its own leaves you guessing which pixel you are about to hit. */
+.paint-cursor[data-tool="fill"]::after {
+  content: ""; position: absolute; translate: -50% -50%;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; border: 1.5px solid rgba(255, 255, 255, .95);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .paint-cursor { transition: width .12s ease, height .12s ease; }
+}
+
+/* --- Placing a picture --- */
+/* Up only while a picture is floating over the drawing, in place of the usual
+   footer row — so there is one obvious next step rather than a Done button that
+   would quietly discard what you are still positioning. */
+.paint-place { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+.paint-place .theme-note { flex: 1; min-width: 12ch; }
+.paint-place[hidden], .paint-bar[hidden] { display: none; }
+/* The canvas is a thing you drag now, not a thing you draw on. */
+.paint-canvas[data-placing] { cursor: move; }
+
+/* The drawing sits in a well: a hairline and a faint inset shadow, so it reads
+   as a surface you are marking rather than another panel in the stack. */
+/* No `aspect-ratio` here: it is per-slot now and is set inline from the size the
+   editor was opened with. A square default left in the stylesheet would letterbox
+   the sky inside its own element, and the pointer maths assumes the element and
+   the bitmap are the same shape — so every stroke would land off the cursor. */
+.paint-canvas {
+  display: block; width: 100%; border-radius: 12px;
+  /* No system cursor: the ring and the bucket are the cursor, and a crosshair
+     sitting inside a 6px ring is bigger than the brush it is pointing with. */
+  touch-action: none; cursor: none;
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 5px rgba(27, 28, 32, .08);
+  /* The checkerboard says "transparent" without a caption, and matches the one
+     behind the thumbnails so a drawing and its preview read as one object. */
+  background:
+    conic-gradient(from 90deg, #e4e8ef 25%, #f2f4f8 0 50%, #e4e8ef 0 75%, #f2f4f8 0) 0 0 / 16px 16px;
+}
+
+/* One row, in groups: what the pointer does, how wide, what colour, and the
+   two things you do to the whole drawing. Grouping is by spacing alone — rules
+   between them would be four more lines on a bar that is already the busiest
+   thing in the window. */
+.paint-bar { position: relative; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* Measured from the toolbar rather than from the chip: anchored to the chip it
+   followed the chip off the screen as soon as the bar wrapped to two rows. */
+.paint-group { display: flex; gap: 4px; }
+.paint-group-end { margin-left: auto; }
+
+.paint-tool, .paint-size {
+  display: grid; place-items: center; height: 34px; padding: 0; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+  color: var(--ink); font-size: .95rem; line-height: 1;
+  transition: background .12s, border-color .12s;
+}
+.paint-tool { width: 36px; }
+.paint-size { width: 32px; }
+.paint-tool:hover, .paint-size:hover { background: var(--bg-soft); }
+.paint-tool[aria-pressed="true"] {
+  background: var(--screen); border-color: transparent; color: #fff;
+}
+.paint-size span { display: block; border-radius: 50%; background: var(--ink); }
+.paint-size[aria-pressed="true"] { border-color: var(--ink); background: var(--bg-soft); }
+
+/* --- The colour dropdown, shared by the paint editor and the menu card --- */
+.swatch-picker { position: relative; display: flex; }
+.swatch-chip {
+  display: grid; grid-auto-flow: column; place-items: center; gap: 5px;
+  height: 34px; padding: 0 8px 0 6px; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+  transition: background .12s, border-color .12s;
+}
+.swatch-chip:hover { background: var(--bg-soft); }
+.swatch-chip[aria-expanded="true"] { border-color: var(--screen); background: var(--bg-soft); }
+.swatch-chip-dot {
+  width: 20px; height: 20px; border-radius: 6px;
+  border: 1px solid rgba(27, 28, 32, .2);
+}
+.swatch-chip-caret { font-size: .62rem; color: var(--ink-soft); }
+
+.swatch-palette {
+  position: absolute; z-index: 3; top: calc(100% + 6px);
+  left: 50%; translate: -50% 0;
+  display: grid; grid-template-columns: repeat(6, 26px); gap: 5px; padding: 9px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+.swatch-palette[hidden] { display: none; }
+/* Placed against the viewport in script, so it can be wider than the scrolling
+   panel the chip sits in without being cut off at its edge. */
+.swatch-palette-floating { position: fixed; z-index: 5; translate: none; }
+.swatch, .swatch-custom {
+  width: 26px; height: 26px; padding: 0; cursor: pointer;
+  border: 1px solid rgba(27, 28, 32, .18); border-radius: 7px; background: none;
+}
+.swatch[aria-pressed="true"],
+.swatch-custom[data-active="true"] { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+/* The rainbow says "any colour you like" without a label, and the real input
+   sits invisibly on top of it so the click still opens the system picker. */
+.swatch-custom {
+  position: relative; display: block; overflow: hidden;
+  background: conic-gradient(from .25turn,
+    #e5484d, #f4b400, #34b24a, #2f6bff, #8b46d6, #e5484d);
+}
+.swatch-custom-input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  padding: 0; border: none; opacity: 0; cursor: pointer;
+}
+/* The focus ring has to land on the chip, since the thing actually focused is
+   the transparent input inside it. */
+.swatch-custom:has(.swatch-custom-input:focus-visible) {
+  outline: 2px solid var(--screen); outline-offset: 2px;
+}
+
+.paint-footer { display: flex; align-items: center; gap: 10px; }
+.paint-upload, .paint-done { font-size: .78rem; padding: 6px 13px; }
+/* Done is the way out, so it sits apart from the way to bring a picture in. */
+.paint-done { margin-left: auto; }
+
+/* Every control in here takes the screen's own focus ring, since the dialog
+   carries that colour too. */
+.paint-shell :is(button, input, label):focus-visible {
+  outline: 2px solid var(--screen); outline-offset: 2px;
+}
+
+/* A file input the label opens; only the label is ever seen. */
+.visually-hidden-file {
+  position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;
+}
+
+/* It arrives rather than appearing — a short rise, which is the only motion in
+   the window and reads as the sheet being put down in front of you. */
+@media (prefers-reduced-motion: no-preference) {
+  .paint-dialog[open] .paint-shell { animation: paint-in .18s ease-out both; }
+  @keyframes paint-in {
+    from { opacity: 0; transform: translateY(8px) scale(.985); }
+  }
+}
+
+/* --- Sounds --- */
+.sound-row { display: flex; flex-direction: column; gap: 4px; }
+.sound-row + .sound-row { margin-top: 10px; }
+/* The group is `align-items: start`, so a row would otherwise be only as wide
+   as its own sentence — and four rows of different lengths put their buttons in
+   four different places. Stretching them lines the controls up in one column. */
+#panel-design .settings-group > .sound-row { align-self: stretch; }
+/* Label left, controls right, on one line. They wrap to two only when the card
+   is too narrow to hold both — which is the point at which stacking reads
+   better than squeezing. */
+/* `nowrap` is load-bearing. Flex decides to wrap from content size before it
+   considers shrinking, so with wrapping on, a long filename sent the buttons
+   onto a second line instead of ellipsising the name. */
+.sound-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: nowrap;
+}
+.sound-actions { display: flex; align-items: center; gap: 3px; flex: none; }
+/* A filename is any length somebody likes, so it is the one part allowed to be
+   cut short — otherwise adding four sounds puts every row back onto two lines.
+   The whole name stays available on hover, and to a screen reader. */
+.sound-head .wiring-sentence { flex: 1 1 auto; min-width: 0; }
+.sound-head .sound-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Once the card is this narrow there is no room to hold both, and squeezing the
+   sentence into a 50px column wraps it to five lines. Below here the buttons
+   take their own line instead. */
+@media (max-width: 720px) {
+  .sound-head { flex-wrap: wrap; }
+  .sound-head .wiring-sentence { flex: 1 1 100%; }
+}
+.sound-name { font-weight: 700; }
+.sound-name-empty { font-weight: 500; color: var(--ink-faint); }
+.sound-row .btn { padding: 4px 9px; font-size: .76rem; }
+.sound-row .btn:disabled { opacity: .4; cursor: default; }
+.sound-actions [hidden] { display: none; }
+/* Recording is the one control here with a consequence attached, so it is the
+   one that changes colour while it is doing something. */
+.sound-record[aria-pressed], .sound-recording {
+  background: var(--red-soft); border-color: var(--red); color: var(--red-ink);
+}
+
+/* --- Words --- */
+.theme-text {
+  min-width: 14ch; flex: 1 1 22ch; min-height: 28px; padding: 3px 7px;
+  font-family: inherit; font-size: .8rem; font-weight: 500;
+  border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink);
+}
+.theme-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+/* --- The menu card, edited in place --- */
+/* A facsimile of what the game draws, with the lines themselves editable. The
+   labels a form would need are gone because each line is already sitting where
+   it will appear, and the preview is gone because this is the preview. */
+.face-switch {
+  display: inline-flex; gap: 2px; margin-bottom: 12px; padding: 3px;
+  background: var(--bg-soft); border: 1px solid var(--line); border-radius: 10px;
+}
+.face-btn {
+  padding: 5px 12px; font: inherit; font-size: .78rem; font-weight: 600;
+  color: var(--ink-soft); background: none; border: none; border-radius: 7px;
+  cursor: pointer;
+}
+.face-btn:hover { color: var(--ink); }
+.face-btn[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: var(--shadow); }
+
+.menu-sheet {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  /* Held to roughly the share of the canvas the game gives it. Stretched to the
+     full panel it read as a banner; at this width it reads as the card. */
+  width: 100%; max-width: 380px; margin-inline: auto;
+  /* Roomy on purpose: these lines are set in whatever face you picked, and a
+     serif or a monospace at this size needs more air around it than the app's
+     own sans does before it stops looking cramped. Less underneath, because the
+     button already carries its own space above it. */
+  padding: 26px 24px 20px; text-align: center;
+  /* Colour, ink and border all come from the one colour you picked, worked out
+     in script by the same function the canvas uses. */
+  border: 1px solid transparent; border-radius: 16px;
+}
+
+/* Quiet until you go near them: at rest the card should look like the card, and
+   only admit to being a set of fields once you are aiming at one. */
+.menu-line {
+  /* Sized to what is written on it — see the note in design.js — and never
+     wider than the card it sits on. */
+  width: auto; max-width: 100%; field-sizing: content;
+  padding: 4px 10px; text-align: center;
+  font: inherit; color: inherit; line-height: 1.35;
+  background: none; border: 1px dashed transparent; border-radius: 8px;
+  transition: border-color .12s;
+}
+.menu-line:hover { border-color: color-mix(in srgb, currentColor 30%, transparent); }
+/* The screen's own ring, not a tint of the card's ink. A tint had to work over
+   whatever colour you had chosen and over the button's own fill, and against
+   some of those it was not visible at all — which made the line you were
+   editing indistinguishable from the two you were not. */
+.menu-line:focus {
+  outline: 2px solid var(--screen);
+  outline-offset: 2px;
+  border-color: transparent;
+}
+.menu-line::placeholder { color: currentColor; opacity: .4; }
+
+/* The same type scale the canvas uses, a size down so the card sits inside a
+   settings panel without shouting. */
+/* The game centres this card on the canvas, so its stand-in centres in the
+   panel and takes its switch and its style line with it. Left-aligned controls
+   either side of a centred card read as three different columns. */
+/* Both together: the switch is inline-flex so it hugs its two buttons, and an
+   inline box ignores auto margins — while a block flex without `fit-content`
+   spans the card and leaves the auto margins nothing to divide. */
+#design-text .face-switch { display: flex; width: fit-content; margin-inline: auto; }
+/* The controls sit under the card, not adrift from it. */
+#design-text .settings-group { margin-top: 10px; }
+/* Beats the rule further up that stretches these rows across their card, which
+   is right for a row holding a text field and wrong for one holding two
+   dropdowns under a centred card. */
+#design-text .settings-group > .wiring-sentence { align-self: center; }
+
+.menu-title { font-size: 1.32rem; font-weight: 700; letter-spacing: -.01em; }
+.menu-body { font-size: .95rem; font-weight: 500; }
+
+/* The number the game fills in. Shown so the card is laid out as it will be,
+   and plainly not a field, since it is the one line you cannot write. */
+.menu-score {
+  margin: 2px 0; font-size: 1.7rem; font-weight: 700; line-height: 1.1;
+  cursor: default;
+}
+
+/* The words on the button, edited on something shaped like the button. Its two
+   colours are set from the card's palette in script rather than here, because
+   they are worked out from whatever colour the card is. */
+.menu-button {
+  margin-top: 12px; padding: 10px 22px;
+  font-size: .88rem; font-weight: 600;
+  border-radius: 999px; border-color: transparent;
+}
+.menu-button::placeholder { color: currentColor; opacity: .6; }
+.menu-button:hover { border-color: transparent; filter: brightness(1.1); }
+/* Offset further than the other lines so the ring clears the pill's own edge
+   rather than sitting on it. */
+.menu-button:focus { outline: 2px solid var(--screen); outline-offset: 3px; filter: none; }
+
+/* Listed in the face it names, so the choice is made by looking. */
+.font-picker, .font-picker option { font-size: .84rem; }

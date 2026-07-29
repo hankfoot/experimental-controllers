@@ -1,4 +1,4 @@
-# Experimental Game Controllers
+# Game Controller Workshop
 
 A companion website for the **Fidget Camp 2026** workshop on unconventional controllers.
 
@@ -61,26 +61,38 @@ deployment branch is needed.
 
 The Game page contains a visual patch bay. Choose or drag an input onto a compatible game port,
 then tune its threshold, range, direction, cooldown, or smoothing. Buttons and gestures work as
-triggers; sensor readings can drive bird position, game speed, flap strength, and gravity. Wiring
-is saved in browser storage and survives a refresh.
+triggers; sensor readings can drive the craft's position and how hard it climbs. How fast the
+world runs is a choice rather than a control, and lives on the Design page. Wiring is saved in
+browser storage and survives a refresh.
 
 On wide screens the wiring workbench and game sit side-by-side so changes can be tested
 immediately. When that pair cannot fit comfortably, the game stacks beneath the workbench.
 
 ## Code structure
 
-- `index.html` contains the four accessible page panels and static workshop content.
+- `index.html` contains the six accessible page panels — Home, Setup, Sensing, Controls, Design,
+  Game — and the static workshop content.
 - `styles.css` contains the complete responsive design.
+- `js/main.js` builds everything and wires it together; `js/tabs.js` runs the page panels.
 - `js/builder.js` generates MakeCode and controller-building guidance.
+- `js/channels.js` holds friendly metadata for known wire-protocol channels.
 - `js/signal-store.js` owns discovered, planned, and wired input state.
 - `js/wiring-*.js` separate wiring configuration, runtime math, persistence, coordination, and UI.
-- `js/game-engine.js` contains testable game rules; `js/game.js` connects them to the DOM/canvas.
+- `js/games/` contains testable game rules: `base.js` is shared scaffolding, `sidescroller.js` is
+  the game and its control schemes, and `index.js` is the registry the rest of the app reads.
+- `js/game.js` connects those rules to the DOM/canvas; `js/game-warning.js` works out what is still
+  missing between a controller and a playable game.
+- `js/design.js` is the Design screen — course settings plus the look and sound of the game.
+- `js/theme/` is that look-and-sound layer: drawing, sound, storage, and scene rendering.
 - `js/bluetooth.js`, `js/bus.js`, and `js/visualizer.js` handle the input pipeline.
-- `test/` covers wiring migration, persistence, protocol parsing, and game rules.
+- `test/` covers wiring migration, persistence, protocol parsing, game rules, themes
+  (`test/theme.test.js`), and the game-readiness check (`test/game-warning.test.js`).
 
 ## Controller code builder
 
 The Controller page generates complete MakeCode JavaScript from the selected inputs, including
 per-input build tips. Inputs are grouped into touch/press, tilt/direction, gestures, and ambient
-sensors. The generated loop polls every 100 ms; the page warns when too many continuously
-streaming inputs may overwhelm the micro:bit's Bluetooth UART.
+sensors. Buttons, pads, switches and gestures report their DOWN and UP events the instant they
+happen, so a press is never a tick late and a quick tap is never missed; the readings that have no
+edges — tilt, compass, light, sound — are polled by a loop every 100 ms, and the page warns when
+too many of those may overwhelm the micro:bit's Bluetooth UART.

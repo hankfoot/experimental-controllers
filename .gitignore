@@ -8,3 +8,9 @@ scratchpad-assets/
 node_modules/
 dist/
 *.log
+
+# Local tooling and experiments. This repo is served straight to the public from
+# its own root, so anything that isn't the site itself stays out of it.
+.claude/
+skills-lock.json
+prototypes/

@@ -1,4 +1,4 @@
-import { holdDirection } from './wiring-config.js';
+import { holdDirection, outputIdOf, portTypeForTransform } from './wiring-config.js';
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 
@@ -8,54 +8,33 @@ const clamp01 = (value) => Math.max(0, Math.min(1, value));
 // not to be tuned.
 const GATE_HYSTERESIS = 0.03;
 
+// How near a bearing counts as facing it, and how far away it takes to stop.
+// Two numbers rather than one for the same reason a gate has a dead band: an
+// object sitting on the edge of a sector would otherwise flicker on and off.
+// ENTER sits inside the 45° a quarter-turn allows, EXIT outside it.
+const FACING_ENTER = 35;
+const FACING_EXIT = 55;
+
+/**
+ * How far a heading is from a bearing, going the short way round. This is the
+ * whole reason a bearing isn't a number: 350° is 10° from north, not 350°, and
+ * every linear comparison in this file would get that wrong.
+ */
+export function bearingOffset(value, bearing) {
+  const heading = ((value % 360) + 360) % 360;
+  const offset = Math.abs(heading - bearing);
+  return offset > 180 ? 360 - offset : offset;
+}
+
 export function createRuntimeState() {
   return {
     previousRaw: null,
     filtered: null,
+    smoothedAt: null,
     gateOn: false,
+    facingOn: false,
     lastFiredAt: -Infinity,
   };
-}
-
-// Every on/off input — button, logo, touch pad, switch — is polled inside the
-// micro:bit's 100 ms loop and sent as a level, so contact bounce never reaches
-// us: the board isn't looking during the few milliseconds a contact rattles.
-// Debouncing in the usual sense is already done, at the source, for free.
-//
-// What survives the poll is the opposite fault, and the one homemade
-// controllers actually suffer from: a single tick that catches an intermittent
-// contact open and reads 0 in the middle of a press — foil flexing, a clip
-// sitting half on, a finger resting light on a piece of fruit. One dropped tick
-// drops the control for 100 ms, which reads as the game ignoring you.
-//
-// So the filter is asymmetric, because the two directions aren't equally
-// suspicious. On is taken immediately: a press has to land the instant it
-// happens or the control feels broken. Off has to say so twice before the
-// control lets go, spending 100 ms on every genuine release — invisible in a
-// game — to make a dropped tick cost nothing. A tap short enough to land on
-// only one tick still registers, which is why this shape and not a symmetric
-// one: requiring two ticks in both directions would swallow the quick tap
-// entirely. Like the gate's dead band, it exists to make homemade contacts
-// usable and isn't offered as a setting.
-export function createChannelFilter() {
-  return { held: false, pendingOff: false };
-}
-
-export function filterBinary(rawValue, state) {
-  if (rawValue > 0) {
-    state.held = true;
-    state.pendingOff = false;
-  } else if (state.held) {
-    // The first off reading after a run of on readings might be a dropped tick;
-    // only a second one in a row is a release.
-    if (state.pendingOff) {
-      state.held = false;
-      state.pendingOff = false;
-    } else {
-      state.pendingOff = true;
-    }
-  }
-  return state.held ? 1 : 0;
 }
 
 function signalRange(signal) {
@@ -68,6 +47,9 @@ export function createDefaultTransform(signal, port, outputId) {
     return { type: 'range', ...range, invert: false, smoothing: 0 };
   }
   if (port.type === 'hold') {
+    // A bearing holds while it points somewhere, which is a sector rather than
+    // a side of a line — so it has one hold jack, not a high one and a low one.
+    if (signal.kind === 'bearing') return { type: 'facing', bearing: 0 };
     // Only an analog reading needs squaring off; a button's 0/1 already holds.
     // Which side of the line it holds on comes from the jack, so the two gated
     // jacks start life pointing opposite ways.
@@ -80,6 +62,7 @@ export function createDefaultTransform(signal, port, outputId) {
       }
       : { type: 'hold', invert: false };
   }
+  if (signal.kind === 'bearing') return { type: 'faces', bearing: 0, cooldownMs: 160 };
   if (signal.kind === 'event') return { type: 'event', cooldownMs: 160 };
   if (signal.kind === 'binary') return { type: 'edge', edge: 'rising', cooldownMs: 160 };
   return {
@@ -91,12 +74,41 @@ export function createDefaultTransform(signal, port, outputId) {
   };
 }
 
-export function sampleRange(rawValue, transform, state) {
+// The rate the smoothing numbers are quoted against: the micro:bit's own tick.
+// `smoothing` is "how much of the old reading survives one tick", so 0.9 means
+// a tenth of the way to the new value every 100 ms, whatever is actually
+// sending. Without a reference rate the same setting means different things on
+// different inputs — see below.
+const TICK_SECONDS = 0.1;
+
+/**
+ * A reading, mapped into 0..1 and eased toward.
+ *
+ * The easing is against elapsed *time*, not against samples. It used to be per
+ * sample, which quietly made the setting mean whatever the input's rate
+ * happened to be: a polled sensor arriving ten times a second was smoothed a
+ * tenth as hard as a mouse arriving at the display's refresh rate, so the one
+ * control that exists to stop a twitchy input twitching did almost nothing on
+ * the twitchiest inputs. Raising it to compensate then made the slow inputs
+ * unusably sluggish, which is what "no matter how hard I try" looks like.
+ */
+export function sampleRange(rawValue, transform, state, now = null) {
   const normalized = normalize(rawValue, transform);
   const smoothing = clamp01(transform.smoothing || 0);
-  const output = state.filtered == null
-    ? normalized
-    : state.filtered * smoothing + normalized * (1 - smoothing);
+  if (state.filtered == null || smoothing === 0) {
+    state.filtered = normalized;
+    state.smoothedAt = now;
+    return normalized;
+  }
+
+  const elapsed = now == null || state.smoothedAt == null
+    ? TICK_SECONDS
+    : Math.max(0, (now - state.smoothedAt) / 1000);
+  state.smoothedAt = now;
+  // How much of the old value survives this gap. At exactly one tick this is
+  // `smoothing` itself, so every saved wire keeps the feel it was set up with.
+  const keep = smoothing ** (elapsed / TICK_SECONDS);
+  const output = state.filtered * keep + normalized * (1 - keep);
   state.filtered = output;
   return output;
 }
@@ -122,11 +134,33 @@ export function sampleGate(rawValue, transform, state) {
   return state.gateOn ? 1 : 0;
 }
 
+// Held while the board points a given way. The band it lets go at is wider than
+// the one it takes hold at, so resting on the edge of a sector doesn't chatter.
+export function sampleFacing(rawValue, transform, state) {
+  const limit = state.gateOn ? FACING_EXIT : FACING_ENTER;
+  state.gateOn = bearingOffset(rawValue, transform.bearing) <= limit;
+  return state.gateOn ? 1 : 0;
+}
+
 export function sampleTrigger(rawValue, transform, state, now) {
   let value = rawValue;
   let candidate = false;
 
-  if (transform.type === 'event') {
+  if (transform.type === 'faces') {
+    // Fires on arrival only: once it counts as facing this way it stays latched
+    // until it has turned properly away, so holding a direction is one event and
+    // a wobble on the boundary is none.
+    const offset = bearingOffset(rawValue, transform.bearing);
+    if (offset <= FACING_ENTER) {
+      candidate = !state.facingOn;
+      state.facingOn = true;
+    } else if (offset > FACING_EXIT) {
+      state.facingOn = false;
+    }
+    // Activity reads as nearness to the bearing, so the meter fills as the
+    // object comes round rather than jumping only when it fires.
+    value = 1 - clamp01(offset / 180);
+  } else if (transform.type === 'event') {
     candidate = rawValue > 0;
   } else if (transform.type === 'edge') {
     candidate = transform.edge === 'falling'
@@ -155,6 +189,21 @@ export function sampleTrigger(rawValue, transform, state, now) {
 }
 
 export function migrateTransformForSignal(transform, signal) {
+  // A bearing only has the two jacks, so anything arriving on it becomes the
+  // one its port allows, keeping the direction if it already had one. Going the
+  // other way, a facing transform on a signal that is no longer a bearing has
+  // no circle left to measure on and falls back to that kind's own default.
+  if (signal.kind === 'bearing') {
+    const bearing = transform.bearing ?? 0;
+    if (portTypeForTransform(transform.type) === 'hold') return { type: 'facing', bearing };
+    if (portTypeForTransform(transform.type) === 'level') return transform; // dropped: no level jack
+    return { type: 'faces', bearing, cooldownMs: transform.cooldownMs ?? 160 };
+  }
+  if (transform.type === 'faces' || transform.type === 'facing') {
+    const port = { type: portTypeForTransform(transform.type) };
+    return createDefaultTransform(signal, port, outputIdOf(signal, port, transform));
+  }
+
   // A level only exists on an analog reading, so a signal that turns out to be
   // a button loses the jack entirely and the wire is dropped by the engine.
   if (transform.type === 'range') {

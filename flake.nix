@@ -1,5 +1,5 @@
 {
-  description = "Development environment for Experimental Game Controllers";
+  description = "Development environment for Game Controller Workshop";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
